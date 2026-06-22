@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.*?>
+
+<VBox xmlns="http://javafx.com/javafx/21"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.aquamark.controller.VideoListController"
+      styleClass="video-list-panel"
+      minWidth="180" prefWidth="220">
+
+    <!-- Panel header -->
+    <HBox styleClass="panel-header" alignment="CENTER_LEFT" spacing="8">
+        <padding><Insets top="8" right="10" bottom="8" left="10"/></padding>
+        <Label text="VIDEOS" styleClass="panel-title"/>
+        <Pane HBox.hgrow="ALWAYS"/>
+        <Label fx:id="lblCount" text="0 itens" styleClass="count-label"/>
+    </HBox>
+
+    <Separator styleClass="divider"/>
+
+    <!-- Video list -->
+    <ListView fx:id="listVideos" VBox.vgrow="ALWAYS" styleClass="video-list"/>
+
+    <!-- Actions -->
+    <VBox styleClass="list-actions" spacing="6">
+        <padding><Insets top="8" right="8" bottom="8" left="8"/></padding>
+        <Button text="+ Adicionar Videos" styleClass="btn-add"
+                maxWidth="Infinity" onAction="#onAddVideos"/>
+        <HBox spacing="6">
+            <Button fx:id="btnRemove" text="Remover" styleClass="btn-secondary"
+                    HBox.hgrow="ALWAYS" maxWidth="Infinity" onAction="#onRemove"/>
+            <Button fx:id="btnClear" text="Limpar" styleClass="btn-secondary"
+                    HBox.hgrow="ALWAYS" maxWidth="Infinity" onAction="#onClear"/>
+        </HBox>
+    </VBox>
+</VBox>

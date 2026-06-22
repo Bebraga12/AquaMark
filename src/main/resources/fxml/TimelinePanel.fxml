@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.*?>
+
+<VBox xmlns="http://javafx.com/javafx/21"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.aquamark.controller.TimelineController"
+      styleClass="timeline-panel" spacing="6"
+      prefHeight="120" minHeight="105" maxHeight="150"
+      VBox.vgrow="NEVER">
+
+    <padding><Insets top="6" right="12" bottom="6" left="12"/></padding>
+
+    <!-- Header row -->
+    <HBox alignment="CENTER_LEFT" spacing="10">
+        <Label text="CORTE" styleClass="section-title"/>
+        <Label fx:id="lblStart" text="Inicio: 00:00" styleClass="trim-label"/>
+        <Label text="&#x2192;" styleClass="trim-arrow"/>
+        <Label fx:id="lblEnd" text="Fim: 00:00" styleClass="trim-label"/>
+        <Pane HBox.hgrow="ALWAYS"/>
+        <Button text="Resetar corte" styleClass="btn-secondary" onAction="#onReset"/>
+    </HBox>
+
+    <!-- Trim track (handles added programmatically) -->
+    <Pane fx:id="trimTrack" styleClass="trim-track" VBox.vgrow="ALWAYS"/>
+</VBox>

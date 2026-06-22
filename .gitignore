@@ -1,0 +1,17 @@
+# Build output
+target/
+
+# Local tooling metadata
+.agents/
+.codex/
+.directory
+
+# IDE metadata
+.classpath
+.project
+.settings/
+
+# Local notes and prompts
+CLAUDE.md
+PROMPT_INICIAL.md
+fluxos.txt

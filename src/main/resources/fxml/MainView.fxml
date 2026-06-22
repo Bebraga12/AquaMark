@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.media.*?>
+<?import javafx.geometry.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.aquamark.controller.MainController"
+            styleClass="root-pane">
+
+    <!-- ── MenuBar ── -->
+    <top>
+        <MenuBar styleClass="app-menu-bar">
+            <menus>
+                <Menu text="File">
+                    <items>
+                        <MenuItem text="Adicionar Videos" onAction="#onAddVideos"/>
+                        <SeparatorMenuItem/>
+                        <MenuItem text="Sair" onAction="#onExit"/>
+                    </items>
+                </Menu>
+                <Menu text="Edit">
+                    <items>
+                        <MenuItem text="Desfazer" onAction="#onUndo"/>
+                        <MenuItem text="Refazer"  onAction="#onRedo"/>
+                    </items>
+                </Menu>
+                <Menu text="Selection">
+                    <items>
+                        <MenuItem text="Selecionar Todos"  onAction="#onSelectAll"/>
+                        <MenuItem text="Limpar Selecao"    onAction="#onClearSelection"/>
+                    </items>
+                </Menu>
+                <Menu text="View">
+                    <items>
+                        <MenuItem text="Tela Cheia" onAction="#onFullScreen"/>
+                    </items>
+                </Menu>
+                <Menu text="Project">
+                    <items>
+                        <MenuItem text="Configuracoes do Projeto" onAction="#onProjectSettings"/>
+                    </items>
+                </Menu>
+                <Menu text="Export">
+                    <items>
+                        <MenuItem text="Exportar Selecionado" onAction="#onExportSelected"/>
+                        <MenuItem text="Exportar Todos"       onAction="#onExportAll"/>
+                    </items>
+                </Menu>
+                <Menu text="Help">
+                    <items>
+                        <MenuItem text="Sobre" onAction="#onAbout"/>
+                    </items>
+                </Menu>
+            </menus>
+        </MenuBar>
+    </top>
+
+    <!-- ── Main layout: left | center | right ── -->
+    <center>
+        <SplitPane fx:id="mainSplit" styleClass="main-split" dividerPositions="0.20, 0.76" minHeight="0">
+
+            <!-- LEFT: video list -->
+            <fx:include source="VideoListPanel.fxml" fx:id="videoListPanel"/>
+
+            <!-- CENTER: player + timeline -->
+            <VBox styleClass="center-pane" minHeight="0">
+
+                <!-- Player area -->
+                <BorderPane VBox.vgrow="ALWAYS" styleClass="player-container" minHeight="0">
+                    <center>
+                        <StackPane fx:id="playerStackPane" styleClass="player-stack" minHeight="0">
+
+                            <!-- Empty state (shown on top when no video) -->
+                            <VBox fx:id="paneEmpty" styleClass="empty-state"
+                                  alignment="CENTER" spacing="14">
+                                <Label text="&#x25B6;" styleClass="empty-icon"/>
+                                <Label text="Nenhum video selecionado" styleClass="empty-hint"/>
+                                <Label text="Use File &#x25B8; Adicionar Videos ou o botao abaixo"
+                                       styleClass="empty-sub"/>
+                            </VBox>
+
+                            <!-- MediaView -->
+                            <MediaView fx:id="mediaView" styleClass="media-view"/>
+                        </StackPane>
+                    </center>
+
+                    <bottom>
+                      <VBox styleClass="player-controls">
+
+                          <!-- Seek bar -->
+                            <Slider fx:id="sliderSeek" styleClass="seek-slider"
+                                    max="100" value="0" blockIncrement="5"/>
+                            <!-- Controls row -->
+                            <HBox styleClass="controls-bar" alignment="CENTER_LEFT" spacing="10">
+                                <padding><Insets top="4" right="10" bottom="6" left="10"/></padding>
+                                <Button fx:id="btnPlayPause" text="&#x25B6;"
+                                        styleClass="play-btn" onAction="#onPlayPause"/>
+                                <Label fx:id="lblCurrentTime" text="00:00" styleClass="time-label"/>
+                                <Label text="/" styleClass="time-sep"/>
+                                <Label fx:id="lblTotalTime"   text="00:00" styleClass="time-label"/>
+                                <Pane HBox.hgrow="ALWAYS"/>
+                                <ToggleButton fx:id="btnMute" text="&#x266A;"
+                                              styleClass="mute-btn" onAction="#onMute"/>
+                                <Slider fx:id="sliderVolume" styleClass="volume-slider"
+                                        max="1.0" value="1.0" prefWidth="90"/>
+                            </HBox>
+                        </VBox>
+                    </bottom>
+                </BorderPane>
+
+                <!-- Timeline / trim panel -->
+                <fx:include source="TimelinePanel.fxml" fx:id="timelinePanel"/>
+            </VBox>
+
+            <!-- RIGHT: editor panel -->
+            <fx:include source="EditorPanel.fxml" fx:id="editorPanel"/>
+
+        </SplitPane>
+    </center>
+</BorderPane>

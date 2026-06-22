@@ -1,0 +1,581 @@
+/* ============================================================
+   AquaMark — Dark Theme (Photoshop-like, professional)
+   ============================================================ */
+
+/* ── Paleta ──────────────────────────────────────────────── */
+/* bg-main   : #1e1e1e   surface   : #2b2b2b                 */
+/* card/input : #323232   border   : #3f3f3f                 */
+/* text-main  : #d4d4d4   text-sec : #8a8a8a                 */
+/* accent     : #3b8eea   acc-hover: #2f72c0                 */
+/* success    : #5fb878   danger   : #e06c75                 */
+
+/* ── Reset / root ──────────────────────────────────────────── */
+.root {
+    -fx-background-color: #1e1e1e;
+    -fx-text-fill: #d4d4d4;
+    -fx-font-family: "Segoe UI", "SF Pro Text", "Helvetica Neue", sans-serif;
+    -fx-font-size: 12px;
+}
+
+.root-pane {
+    -fx-background-color: #1e1e1e;
+}
+
+/* ── MenuBar ─────────────────────────────────────────────── */
+.app-menu-bar {
+    -fx-background-color: #2b2b2b;
+    -fx-border-color: #3f3f3f;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 0;
+}
+
+.app-menu-bar .menu {
+    -fx-background-color: transparent;
+    -fx-text-fill: #d4d4d4;
+    -fx-padding: 4 10;
+}
+
+.app-menu-bar .menu:hover,
+.app-menu-bar .menu:showing {
+    -fx-background-color: #3f3f3f;
+}
+
+.app-menu-bar .menu .label {
+    -fx-text-fill: #d4d4d4;
+}
+
+.context-menu {
+    -fx-background-color: #2b2b2b;
+    -fx-border-color: #3f3f3f;
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.6), 8, 0, 2, 4);
+}
+
+.menu-item {
+    -fx-background-color: transparent;
+    -fx-padding: 5 16;
+}
+
+.menu-item .label {
+    -fx-text-fill: #d4d4d4;
+}
+
+.menu-item:focused,
+.menu-item:hover {
+    -fx-background-color: #3b8eea;
+}
+
+.menu-item:focused .label,
+.menu-item:hover .label {
+    -fx-text-fill: white;
+}
+
+.separator.menu-item {
+    -fx-padding: 2 0;
+}
+
+/* ── SplitPane ──────────────────────────────────────────── */
+.main-split {
+    -fx-background-color: #1e1e1e;
+    -fx-padding: 0;
+}
+
+.main-split > .split-pane-divider {
+    -fx-background-color: #3f3f3f;
+    -fx-padding: 0 1 0 1;
+}
+
+/* ── Video List Panel ──────────────────────────────────── */
+.video-list-panel {
+    -fx-background-color: #252525;
+}
+
+.panel-header {
+    -fx-background-color: #2b2b2b;
+}
+
+.panel-title {
+    -fx-text-fill: #8a8a8a;
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+}
+
+.count-label {
+    -fx-text-fill: #5a5a5a;
+    -fx-font-size: 10px;
+}
+
+.divider {
+    -fx-background-color: #3f3f3f;
+    -fx-padding: 0 0 1 0;
+}
+
+.video-list {
+    -fx-background-color: #1e1e1e;
+    -fx-border-color: transparent;
+    -fx-padding: 2;
+}
+
+.video-list .list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: #c8c8c8;
+    -fx-padding: 6 10;
+    -fx-font-size: 12px;
+}
+
+.video-list .list-cell:hover {
+    -fx-background-color: #2d2d2d;
+}
+
+.video-list .list-cell:selected {
+    -fx-background-color: #1e3f66;
+    -fx-text-fill: #d4d4d4;
+}
+
+.video-list .list-cell:selected:hover {
+    -fx-background-color: #254d80;
+}
+
+.list-actions {
+    -fx-background-color: #252525;
+    -fx-border-color: #3f3f3f;
+    -fx-border-width: 1 0 0 0;
+}
+
+/* ── Center / Player ─────────────────────────────────────── */
+.center-pane {
+    -fx-background-color: #1e1e1e;
+}
+
+.player-container {
+    -fx-background-color: #111111;
+}
+
+.player-stack {
+    -fx-background-color: #000000;
+}
+
+.empty-state {
+    -fx-background-color: transparent;
+}
+
+.empty-icon {
+    -fx-text-fill: #2e2e2e;
+    -fx-font-size: 56px;
+}
+
+.empty-hint {
+    -fx-text-fill: #5a5a5a;
+    -fx-font-size: 14px;
+}
+
+.empty-sub {
+    -fx-text-fill: #3a3a3a;
+    -fx-font-size: 11px;
+}
+
+.media-view {
+    -fx-background-color: transparent;
+}
+
+/* ── Player controls ─────────────────────────────────────── */
+.player-controls {
+    -fx-background-color: #1a1a1a;
+    -fx-border-color: #3f3f3f;
+    -fx-border-width: 1 0 0 0;
+    -fx-padding: 0;
+}
+
+.controls-bar {
+    -fx-background-color: transparent;
+}
+
+/* Seek slider */
+.seek-slider {
+    -fx-padding: 4 8 4 8;
+}
+
+.seek-slider .track {
+    -fx-background-color: #3a3a3a;
+    -fx-background-radius: 2;
+    -fx-pref-height: 4px;
+}
+
+.seek-slider .thumb {
+    -fx-background-color: #d4d4d4;
+    -fx-background-radius: 50%;
+    -fx-pref-width: 12;
+    -fx-pref-height: 12;
+    -fx-effect: none;
+}
+
+.seek-slider:hover .thumb {
+    -fx-background-color: #ffffff;
+}
+
+.seek-slider:focused .thumb {
+    -fx-background-color: #3b8eea;
+}
+
+/* Volume slider */
+.volume-slider .track {
+    -fx-background-color: #3a3a3a;
+    -fx-background-radius: 2;
+    -fx-pref-height: 3px;
+}
+
+.volume-slider .thumb {
+    -fx-background-color: #b0b0b0;
+    -fx-background-radius: 50%;
+    -fx-pref-width: 10;
+    -fx-pref-height: 10;
+    -fx-effect: none;
+}
+
+/* Play button */
+.play-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: #d4d4d4;
+    -fx-font-size: 15px;
+    -fx-padding: 2 8;
+    -fx-cursor: hand;
+    -fx-border-color: transparent;
+}
+
+.play-btn:hover {
+    -fx-text-fill: white;
+    -fx-background-color: #2a2a2a;
+    -fx-background-radius: 3;
+}
+
+.play-btn:pressed {
+    -fx-background-color: #333333;
+}
+
+/* Mute button */
+.mute-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: #8a8a8a;
+    -fx-font-size: 13px;
+    -fx-padding: 2 6;
+    -fx-cursor: hand;
+    -fx-border-color: transparent;
+}
+
+.mute-btn:selected {
+    -fx-text-fill: #e06c75;
+}
+
+.mute-btn:hover {
+    -fx-background-color: #2a2a2a;
+    -fx-background-radius: 3;
+}
+
+/* Time labels */
+.time-label {
+    -fx-text-fill: #b0b0b0;
+    -fx-font-size: 12px;
+    -fx-font-family: "Consolas", "Courier New", monospace;
+}
+
+.time-sep {
+    -fx-text-fill: #5a5a5a;
+}
+
+/* ── Timeline ─────────────────────────────────────────────── */
+.timeline-panel {
+    -fx-background-color: #232323;
+    -fx-border-color: #3f3f3f;
+    -fx-border-width: 1 0 0 0;
+}
+
+.trim-track {
+    -fx-background-color: #1a1a1a;
+    -fx-background-radius: 4;
+    -fx-border-color: #3a3a3a;
+    -fx-border-width: 1;
+    -fx-border-radius: 4;
+}
+
+.trim-label {
+    -fx-text-fill: #c0c0c0;
+    -fx-font-size: 11px;
+    -fx-font-family: "Consolas", "Courier New", monospace;
+}
+
+.trim-arrow {
+    -fx-text-fill: #5a5a5a;
+}
+
+/* ── Editor Panel ─────────────────────────────────────────── */
+.editor-panel {
+    -fx-background-color: #252525;
+}
+
+.editor-scroll {
+    -fx-background-color: #252525;
+    -fx-background: #252525;
+    -fx-border-color: transparent;
+}
+
+.editor-scroll > .viewport {
+    -fx-background-color: #252525;
+}
+
+.editor-scroll > .scroll-bar {
+    -fx-background-color: #252525;
+}
+
+.editor-scroll > .scroll-bar .thumb {
+    -fx-background-color: #3f3f3f;
+    -fx-background-radius: 3;
+}
+
+.editor-scroll > .scroll-bar .thumb:hover {
+    -fx-background-color: #505050;
+}
+
+.editor-section {
+    -fx-background-color: transparent;
+}
+
+.section-title {
+    -fx-text-fill: #6a6a6a;
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+}
+
+.section-sep {
+    -fx-background-color: #3f3f3f;
+    -fx-padding: 0 0 1 0;
+}
+
+.section-sep > .line {
+    -fx-border-color: #3f3f3f;
+    -fx-border-width: 0.5;
+}
+
+.field-label {
+    -fx-text-fill: #9a9a9a;
+    -fx-font-size: 11px;
+}
+
+.value-label {
+    -fx-text-fill: #c8c8c8;
+    -fx-font-size: 11px;
+    -fx-font-family: "Consolas", "Courier New", monospace;
+    -fx-alignment: CENTER_RIGHT;
+}
+
+/* Editor sliders */
+.editor-slider .track {
+    -fx-background-color: #3a3a3a;
+    -fx-background-radius: 2;
+    -fx-pref-height: 3px;
+}
+
+.editor-slider .thumb {
+    -fx-background-color: #3b8eea;
+    -fx-background-radius: 50%;
+    -fx-pref-width: 12;
+    -fx-pref-height: 12;
+    -fx-effect: none;
+}
+
+.editor-slider .thumb:hover {
+    -fx-background-color: #5aaaf0;
+    -fx-effect: dropshadow(gaussian, rgba(59,142,234,0.4), 6, 0, 0, 0);
+}
+
+/* ── Buttons ─────────────────────────────────────────────── */
+
+/* Add videos button */
+.btn-add {
+    -fx-background-color: #3b8eea;
+    -fx-text-fill: white;
+    -fx-font-size: 12px;
+    -fx-background-radius: 3;
+    -fx-border-color: transparent;
+    -fx-padding: 6 10;
+    -fx-cursor: hand;
+}
+
+.btn-add:hover {
+    -fx-background-color: #2f72c0;
+}
+
+.btn-add:pressed {
+    -fx-background-color: #265fa0;
+}
+
+/* Secondary button */
+.btn-secondary {
+    -fx-background-color: #323232;
+    -fx-text-fill: #c0c0c0;
+    -fx-font-size: 11px;
+    -fx-background-radius: 3;
+    -fx-border-color: #4a4a4a;
+    -fx-border-radius: 3;
+    -fx-padding: 5 10;
+    -fx-cursor: hand;
+}
+
+.btn-secondary:hover {
+    -fx-background-color: #3a3a3a;
+    -fx-text-fill: #d4d4d4;
+}
+
+.btn-secondary:pressed {
+    -fx-background-color: #2a2a2a;
+}
+
+.btn-secondary:disabled {
+    -fx-opacity: 0.35;
+}
+
+/* Rotation shortcut buttons */
+.btn-shortcut {
+    -fx-background-color: #2e2e2e;
+    -fx-text-fill: #b0b0b0;
+    -fx-font-size: 11px;
+    -fx-background-radius: 3;
+    -fx-border-color: #3f3f3f;
+    -fx-border-radius: 3;
+    -fx-padding: 5 4;
+    -fx-cursor: hand;
+}
+
+.btn-shortcut:hover {
+    -fx-background-color: #383838;
+    -fx-text-fill: #d4d4d4;
+}
+
+.btn-shortcut:pressed {
+    -fx-background-color: #222222;
+}
+
+/* Export button */
+.btn-export {
+    -fx-background-color: #5fb878;
+    -fx-text-fill: #0d1f0f;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-background-radius: 4;
+    -fx-border-color: transparent;
+    -fx-padding: 10 0;
+    -fx-cursor: hand;
+}
+
+.btn-export:hover {
+    -fx-background-color: #50a869;
+}
+
+.btn-export:pressed {
+    -fx-background-color: #40925a;
+}
+
+/* ── Resolution toggle buttons ───────────────────────────── */
+.res-toggle {
+    -fx-background-color: #2b2b2b;
+    -fx-text-fill: #b0b0b0;
+    -fx-font-size: 11px;
+    -fx-alignment: CENTER_LEFT;
+    -fx-background-radius: 3;
+    -fx-border-color: #3f3f3f;
+    -fx-border-radius: 3;
+    -fx-padding: 6 10;
+    -fx-cursor: hand;
+}
+
+.res-toggle:hover {
+    -fx-background-color: #333333;
+    -fx-text-fill: #d4d4d4;
+}
+
+.res-toggle:selected {
+    -fx-background-color: #1a3a5c;
+    -fx-text-fill: #3b8eea;
+    -fx-border-color: #3b8eea;
+}
+
+.res-toggle:selected:hover {
+    -fx-background-color: #1f4875;
+}
+
+/* ── Position grid ──────────────────────────────────────── */
+/* ── Watermark position drag preview ─────────────────────── */
+.wm-position-pane {
+    -fx-background-color: #1a1a1a;
+    -fx-border-color: #3f3f3f;
+    -fx-border-width: 1;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+}
+
+/* ── Letterbox color picker ──────────────────────────────── */
+.letterbox-picker {
+    -fx-background-color: #323232;
+    -fx-border-color: #3f3f3f;
+    -fx-border-radius: 3;
+    -fx-background-radius: 3;
+}
+
+.letterbox-picker .color-picker-label {
+    -fx-text-fill: #c0c0c0;
+}
+
+/* ── Export footer ───────────────────────────────────────── */
+.export-footer {
+    -fx-background-color: #252525;
+    -fx-border-color: #3f3f3f;
+    -fx-border-width: 1 0 0 0;
+}
+
+/* ── Watermark file label ─────────────────────────────────── */
+.file-label {
+    -fx-text-fill: #8a8a8a;
+    -fx-font-size: 11px;
+    -fx-text-overrun: ELLIPSIS;
+}
+
+/* ── Separator ───────────────────────────────────────────── */
+.separator > .line {
+    -fx-border-color: #3f3f3f;
+    -fx-border-style: solid;
+    -fx-border-width: 0.5 0 0 0;
+}
+
+/* ── ScrollBar global ────────────────────────────────────── */
+.scroll-bar {
+    -fx-background-color: #252525;
+}
+
+.scroll-bar .thumb {
+    -fx-background-color: #3f3f3f;
+    -fx-background-radius: 3;
+}
+
+.scroll-bar .thumb:hover {
+    -fx-background-color: #505050;
+}
+
+.scroll-bar .increment-button,
+.scroll-bar .decrement-button {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+
+.scroll-bar .increment-arrow,
+.scroll-bar .decrement-arrow {
+    -fx-background-color: #5a5a5a;
+    -fx-shape: " ";
+    -fx-padding: 0;
+}
+
+/* ── Focus ring ─────────────────────────────────────────── */
+.button:focused,
+.toggle-button:focused,
+.slider:focused .thumb,
+.list-view:focused {
+    -fx-effect: dropshadow(gaussian, rgba(59,142,234,0.5), 4, 0, 0, 0);
+}

@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.aquamark.controller.EditorController"
+            styleClass="editor-panel"
+            minWidth="200" prefWidth="270">
+
+    <fx:define>
+        <ToggleGroup fx:id="resolutionGroup"/>
+    </fx:define>
+
+    <center>
+    <ScrollPane fitToWidth="true" styleClass="editor-scroll" minHeight="0" minWidth="0">
+        <content>
+            <VBox minHeight="0">
+
+                <!-- ── ROTATION ── -->
+                <VBox styleClass="editor-section" spacing="8">
+                    <padding><Insets top="12" right="12" bottom="12" left="12"/></padding>
+                    <HBox alignment="CENTER_LEFT">
+                        <Label text="ROTACAO" styleClass="section-title"/>
+                        <Pane HBox.hgrow="ALWAYS"/>
+                        <Label fx:id="lblRotationValue" text="0°" styleClass="value-label"/>
+                    </HBox>
+                    <Slider fx:id="sliderRotation" min="-180" max="180" value="0"
+                            styleClass="editor-slider" maxWidth="Infinity"/>
+                    <HBox spacing="4">
+                        <Button text="-90°" styleClass="btn-shortcut"
+                                HBox.hgrow="ALWAYS" maxWidth="Infinity" onAction="#onRotateMinus90"/>
+                        <Button text="0°" styleClass="btn-shortcut"
+                                HBox.hgrow="ALWAYS" maxWidth="Infinity" onAction="#onState0"/>
+                        <Button text="+90°" styleClass="btn-shortcut"
+                                HBox.hgrow="ALWAYS" maxWidth="Infinity" onAction="#onRotatePlus90"/>
+                    </HBox>
+                </VBox>
+
+                <Separator styleClass="section-sep"/>
+
+                <!-- ── RESOLUTION ── -->
+                <VBox styleClass="editor-section" spacing="6">
+                    <padding><Insets top="12" right="12" bottom="12" left="12"/></padding>
+                    <Label text="RESOLUCAO" styleClass="section-title"/>
+                    <ToggleButton fx:id="btnResOriginal" text="Original"
+                                  toggleGroup="$resolutionGroup"
+                                  styleClass="res-toggle" selected="true" maxWidth="Infinity"/>
+                    <ToggleButton fx:id="btnResVertical" text="Vertical 9:16"
+                                  toggleGroup="$resolutionGroup"
+                                  styleClass="res-toggle" maxWidth="Infinity"/>
+                    <ToggleButton fx:id="btnResHorizontal" text="Horizontal 16:9"
+                                  toggleGroup="$resolutionGroup"
+                                  styleClass="res-toggle" maxWidth="Infinity"/>
+                    <ToggleButton fx:id="btnResSquare" text="Quadrado 1:1"
+                                  toggleGroup="$resolutionGroup"
+                                  styleClass="res-toggle" maxWidth="Infinity"/>
+
+                    <HBox fx:id="hboxLetterbox" alignment="CENTER_LEFT" spacing="8"
+                          visible="false" managed="false">
+                        <padding><Insets top="4"/></padding>
+                        <Label text="Cor do letterbox:" styleClass="field-label"/>
+                        <ColorPicker fx:id="colorLetterbox" styleClass="letterbox-picker"/>
+                    </HBox>
+                </VBox>
+
+                <Separator styleClass="section-sep"/>
+
+                <!-- ── WATERMARK ── -->
+                <VBox styleClass="editor-section" spacing="8">
+                    <padding><Insets top="12" right="12" bottom="14" left="12"/></padding>
+                    <Label text="MARCA D'AGUA" styleClass="section-title"/>
+
+                    <!-- File picker -->
+                    <HBox spacing="6" alignment="CENTER_LEFT">
+                        <Button text="Escolher arquivo" styleClass="btn-secondary"
+                                onAction="#onChooseWatermark"/>
+                        <Label fx:id="lblWatermarkFile" text="Nenhum arquivo"
+                               styleClass="file-label" HBox.hgrow="ALWAYS"/>
+                    </HBox>
+
+                    <!-- Size -->
+                    <HBox alignment="CENTER_LEFT" spacing="6">
+                        <Label text="Tamanho" styleClass="field-label" prefWidth="68"/>
+                        <Slider fx:id="sliderWatermarkSize" min="5" max="80" value="20"
+                                styleClass="editor-slider" HBox.hgrow="ALWAYS"/>
+                        <Label fx:id="lblWatermarkSize" text="20%" styleClass="value-label" prefWidth="36"/>
+                    </HBox>
+
+                    <!-- Opacity -->
+                    <HBox alignment="CENTER_LEFT" spacing="6">
+                        <Label text="Opacidade" styleClass="field-label" prefWidth="68"/>
+                        <Slider fx:id="sliderWatermarkOpacity" min="0" max="100" value="100"
+                                styleClass="editor-slider" HBox.hgrow="ALWAYS"/>
+                        <Label fx:id="lblWatermarkOpacity" text="100%" styleClass="value-label" prefWidth="36"/>
+                    </HBox>
+
+                    <!-- Position drag preview -->
+                    <Label text="Posicao" styleClass="field-label"/>
+                    <Pane fx:id="watermarkPositionPane" styleClass="wm-position-pane"
+                          prefHeight="120" minHeight="80" maxWidth="Infinity"/>
+                </VBox>
+
+            </VBox>
+        </content>
+    </ScrollPane>
+    </center>
+
+    <!-- Export button — região bottom do BorderPane: sempre visível -->
+    <bottom>
+        <VBox styleClass="export-footer">
+            <padding><Insets top="8" right="12" bottom="12" left="12"/></padding>
+            <Button fx:id="btnExport" text="Exportar este video" styleClass="btn-export"
+                    maxWidth="Infinity" onAction="#onExport"/>
+        </VBox>
+    </bottom>
+</BorderPane>
