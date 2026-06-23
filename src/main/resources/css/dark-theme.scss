@@ -1,0 +1,616 @@
+// ============================================================
+// AquaMark — Dark Theme (Photoshop-like, professional)
+// ============================================================
+
+// ── Superfícies (escuro → claro) ─────────────────────────────
+$black:                #000000;
+$white:                #ffffff;
+$bg-deep:              #111111;  // player container
+$bg-deeper:            #1a1a1a;  // controls bar, trim track, wm-position
+$bg-main:              #1e1e1e;  // fundo principal
+$bg-timeline:          #232323;  // timeline panel
+$surface-dark:         #252525;  // painéis, footer, botões
+$surface:              #2b2b2b;  // menu bar, headers de painel
+$surface-mid:          #2e2e2e;  // btn-shortcut
+$card:                 #323232;  // inputs, btn-secondary
+
+// ── Tracks / bordas ──────────────────────────────────────────
+$track-bg:             #3a3a3a;  // trilha de sliders
+$border:               #3f3f3f;  // borda principal
+$border-mid:           #4a4a4a;  // borda de botões
+$text-faint:           #5a5a5a;  // borda de hover + textos apagados
+
+// ── Estados interativos ───────────────────────────────────────
+$hover-subtle:         #2a2a2a;  // hover suave (play-btn, mute-btn, btn-secondary:pressed)
+$hover-cell:           #2d2d2d;  // list cell hover
+$hover-mid:            #303030;  // btn hover bg
+$hover-light:          #333333;  // play-btn:pressed, res-toggle:hover
+$hover-bright:         #383838;  // btn-shortcut:hover
+$press-dark:           #1f1f1f;  // btn:pressed
+$press-darker:         #222222;  // btn-shortcut:pressed
+$scrollbar-hover:      #505050;  // scroll thumb:hover
+
+// ── Escala de texto ───────────────────────────────────────────
+$text:                 #d4d4d4;
+$btn-text:             #cfcfcf;  // texto de botões padrão
+$text-bright:          #c8c8c8;  // list cells, value-label
+$text-mid:             #c0c0c0;  // trim-label, btn-secondary, letterbox
+$text-muted:           #b0b0b0;  // volume, btn-shortcut, res-toggle, time
+$text-sec:             #8a8a8a;  // rótulo secundário
+$text-subtle:          #9a9a9a;  // field-label
+$text-dim:             #6a6a6a;  // section-title
+
+// ── Seleção ───────────────────────────────────────────────────
+$selected-bg:          #1e3f66;  // list cell selecionado
+$selected-hover:       #254d80;  // list cell selecionado + hover
+$selected-accent-bg:   #1a3a5c;  // res-toggle selecionado
+$selected-accent-hover:#1f4875;  // res-toggle selecionado + hover
+
+// ── Accent ────────────────────────────────────────────────────
+$accent:               #3b8eea;
+$accent-light:         #5aaaf0;
+$acc-hover:            #2f72c0;
+$acc-press:            #265fa0;
+
+// ── Semânticos ────────────────────────────────────────────────
+$success:              #5fb878;
+$danger:               #e06c75;
+
+// ── Sombras / brilhos ─────────────────────────────────────────
+$shadow-dark:          rgba(0, 0, 0, 0.6);
+$accent-glow:          rgba(59, 142, 234, 0.4);
+$accent-focus:         rgba(59, 142, 234, 0.5);
+
+// ── Tipografia ────────────────────────────────────────────────
+$mono: "Consolas", "Courier New", monospace;
+
+// ── Reset / root ─────────────────────────────────────────────
+.root {
+    -fx-background-color: $bg-main;
+    -fx-text-fill: $text;
+    -fx-font-family: "Segoe UI", "SF Pro Text", "Helvetica Neue", sans-serif;
+    -fx-font-size: 12px;
+}
+
+.root-pane {
+    -fx-background-color: $bg-main;
+}
+
+// ── Botão base ───────────────────────────────────────────────
+.btn {
+    -fx-background-color: $surface-dark;
+    -fx-text-fill: $btn-text;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-background-radius: 4;
+    -fx-border-color: $border-mid;
+    -fx-border-width: 1;
+    -fx-border-radius: 4;
+    -fx-padding: 10 12;
+    -fx-alignment: CENTER;
+    -fx-text-alignment: CENTER;
+    -fx-wrap-text: true;
+    -fx-cursor: hand;
+
+    &:hover   { -fx-background-color: $hover-mid; -fx-border-color: $text-faint; }
+    &:pressed { -fx-background-color: $press-dark; }
+    &:focused {
+        -fx-background-color: $surface-dark;
+        -fx-border-color: $text-faint;
+        -fx-border-width: 1;
+        -fx-effect: none;
+        -fx-focus-color: transparent;
+        -fx-faint-focus-color: transparent;
+    }
+}
+
+// ── MenuBar ──────────────────────────────────────────────────
+.app-menu-bar {
+    -fx-background-color: $surface;
+    -fx-border-color: $border;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 0;
+
+    .menu {
+        -fx-background-color: transparent;
+        -fx-text-fill: $text;
+        -fx-padding: 4 10;
+
+        &:hover, &:showing { -fx-background-color: $border; }
+
+        .label { -fx-text-fill: $text; }
+    }
+}
+
+.context-menu {
+    -fx-background-color: $surface;
+    -fx-border-color: $border;
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(gaussian, $shadow-dark, 8, 0, 2, 4);
+}
+
+.menu-item {
+    -fx-background-color: transparent;
+    -fx-padding: 5 16;
+
+    .label { -fx-text-fill: $text; }
+
+    &:focused, &:hover {
+        -fx-background-color: $accent;
+
+        .label { -fx-text-fill: $white; }
+    }
+}
+
+.separator.menu-item { -fx-padding: 2 0; }
+
+// ── SplitPane ────────────────────────────────────────────────
+.main-split {
+    -fx-background-color: $bg-main;
+    -fx-padding: 0;
+
+    > .split-pane-divider {
+        -fx-background-color: $border;
+        -fx-padding: 0 1 0 1;
+    }
+}
+
+// ── Video List Panel ─────────────────────────────────────────
+.video-list-panel { -fx-background-color: $surface-dark; }
+
+.panel-header { -fx-background-color: $surface; }
+
+.panel-title {
+    -fx-text-fill: $text-sec;
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+}
+
+.count-label {
+    -fx-text-fill: $text-faint;
+    -fx-font-size: 10px;
+}
+
+.divider {
+    -fx-background-color: $border;
+    -fx-padding: 0 0 1 0;
+}
+
+.video-list {
+    -fx-background-color: $bg-main;
+    -fx-border-color: transparent;
+    -fx-padding: 2;
+
+    .list-cell {
+        -fx-background-color: transparent;
+        -fx-text-fill: $text-bright;
+        -fx-padding: 6 10;
+        -fx-font-size: 12px;
+
+        &:hover    { -fx-background-color: $hover-cell; }
+        &:selected {
+            -fx-background-color: $selected-bg;
+            -fx-text-fill: $text;
+
+            &:hover { -fx-background-color: $selected-hover; }
+        }
+    }
+}
+
+.list-actions {
+    -fx-background-color: $surface-dark;
+    -fx-border-color: $border;
+    -fx-border-width: 1 0 0 0;
+}
+
+// ── Center / Player ───────────────────────────────────────────
+.center-pane      { -fx-background-color: $bg-main; }
+.player-container { -fx-background-color: $bg-deep; }
+.player-stack     { -fx-background-color: $black; }
+.empty-state      { -fx-background-color: transparent; }
+.media-view       { -fx-background-color: transparent; }
+
+.empty-icon { -fx-text-fill: $surface-mid; -fx-font-size: 56px; }
+.empty-hint { -fx-text-fill: $text-faint;  -fx-font-size: 14px; }
+.empty-sub  { -fx-text-fill: $track-bg;    -fx-font-size: 11px; }
+
+// ── Player controls ───────────────────────────────────────────
+.player-controls {
+    -fx-background-color: $bg-deeper;
+    -fx-border-color: $border;
+    -fx-border-width: 1 0 0 0;
+    -fx-padding: 0;
+}
+
+.controls-bar { -fx-background-color: transparent; }
+
+.seek-slider {
+    -fx-padding: 4 8 4 8;
+
+    .track {
+        -fx-background-color: $track-bg;
+        -fx-background-radius: 2;
+        -fx-pref-height: 4px;
+    }
+
+    .thumb {
+        -fx-background-color: $text;
+        -fx-background-radius: 50%;
+        -fx-pref-width: 12;
+        -fx-pref-height: 12;
+        -fx-effect: none;
+    }
+
+    &:hover  .thumb  { -fx-background-color: $white; }
+    &:focused .thumb { -fx-background-color: $accent; }
+}
+
+.volume-slider {
+    .track {
+        -fx-background-color: $track-bg;
+        -fx-background-radius: 2;
+        -fx-pref-height: 3px;
+    }
+
+    .thumb {
+        -fx-background-color: $text-muted;
+        -fx-background-radius: 50%;
+        -fx-pref-width: 10;
+        -fx-pref-height: 10;
+        -fx-effect: none;
+    }
+}
+
+.play-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: $text;
+    -fx-font-size: 15px;
+    -fx-padding: 2 8;
+    -fx-cursor: hand;
+    -fx-border-color: transparent;
+
+    &:hover   { -fx-text-fill: $white; -fx-background-color: $hover-subtle; -fx-background-radius: 3; }
+    &:pressed { -fx-background-color: $hover-light; }
+}
+
+.mute-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: $text-sec;
+    -fx-font-size: 13px;
+    -fx-padding: 2 6;
+    -fx-cursor: hand;
+    -fx-border-color: transparent;
+
+    &:selected { -fx-text-fill: $danger; }
+    &:hover    { -fx-background-color: $hover-subtle; -fx-background-radius: 3; }
+}
+
+.time-label {
+    -fx-text-fill: $text-muted;
+    -fx-font-size: 12px;
+    -fx-font-family: $mono;
+}
+
+.time-sep { -fx-text-fill: $text-faint; }
+
+// ── Timeline ──────────────────────────────────────────────────
+.timeline-panel {
+    -fx-background-color: $bg-timeline;
+    -fx-border-color: $border;
+    -fx-border-width: 1 0 0 0;
+}
+
+.trim-track {
+    -fx-background-color: $bg-deeper;
+    -fx-background-radius: 4;
+    -fx-border-color: $track-bg;
+    -fx-border-width: 1;
+    -fx-border-radius: 4;
+}
+
+.trim-label {
+    -fx-text-fill: $text-mid;
+    -fx-font-size: 11px;
+    -fx-font-family: $mono;
+}
+
+.trim-arrow { -fx-text-fill: $text-faint; }
+
+// ── Editor Panel ──────────────────────────────────────────────
+.editor-panel { -fx-background-color: $surface-dark; }
+
+.editor-scroll {
+    -fx-background-color: $surface-dark;
+    -fx-background: $surface-dark;
+    -fx-border-color: transparent;
+
+    > .viewport   { -fx-background-color: $surface-dark; }
+    > .scroll-bar { -fx-background-color: $surface-dark; }
+    > .scroll-bar .thumb {
+        -fx-background-color: $border;
+        -fx-background-radius: 3;
+
+        &:hover { -fx-background-color: $scrollbar-hover; }
+    }
+}
+
+.editor-section { -fx-background-color: transparent; }
+
+.section-title {
+    -fx-text-fill: $text-dim;
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+}
+
+.section-sep {
+    -fx-background-color: $border;
+    -fx-padding: 0 0 1 0;
+
+    > .line { -fx-border-color: $border; -fx-border-width: 0.5; }
+}
+
+.field-label {
+    -fx-text-fill: $text-subtle;
+    -fx-font-size: 11px;
+}
+
+.value-label {
+    -fx-text-fill: $text-bright;
+    -fx-font-size: 11px;
+    -fx-font-family: $mono;
+    -fx-alignment: CENTER_RIGHT;
+}
+
+.editor-slider {
+    .track {
+        -fx-background-color: $track-bg;
+        -fx-background-radius: 2;
+        -fx-pref-height: 3px;
+    }
+
+    .thumb {
+        -fx-background-color: $accent;
+        -fx-background-radius: 50%;
+        -fx-pref-width: 12;
+        -fx-pref-height: 12;
+        -fx-effect: none;
+
+        &:hover {
+            -fx-background-color: $accent-light;
+            -fx-effect: dropshadow(gaussian, $accent-glow, 6, 0, 0, 0);
+        }
+    }
+}
+
+// ── Buttons ───────────────────────────────────────────────────
+.btn-add {
+    -fx-background-color: $accent;
+    -fx-text-fill: $white;
+    -fx-font-size: 12px;
+    -fx-background-radius: 3;
+    -fx-border-color: transparent;
+    -fx-padding: 10 12;
+    -fx-cursor: hand;
+
+    &:hover   { -fx-background-color: $acc-hover; }
+    &:pressed { -fx-background-color: $acc-press; }
+}
+
+.btn-secondary {
+    -fx-background-color: $card;
+    -fx-text-fill: $text-mid;
+    -fx-font-size: 11px;
+    -fx-background-radius: 3;
+    -fx-border-color: $border-mid;
+    -fx-border-radius: 3;
+    -fx-padding: 5 10;
+    -fx-cursor: hand;
+
+    &:hover    { -fx-background-color: $track-bg; -fx-text-fill: $text; }
+    &:pressed  { -fx-background-color: $hover-subtle; }
+    &:disabled { -fx-opacity: 0.35; }
+}
+
+.btn-shortcut {
+    -fx-background-color: $surface-mid;
+    -fx-text-fill: $text-muted;
+    -fx-font-size: 11px;
+    -fx-background-radius: 3;
+    -fx-border-color: $border;
+    -fx-border-radius: 3;
+    -fx-padding: 5 4;
+    -fx-cursor: hand;
+
+    &:hover   { -fx-background-color: $hover-bright; -fx-text-fill: $text; }
+    &:pressed { -fx-background-color: $press-darker; }
+}
+
+.btn-export {
+    -fx-background-color: $surface-dark;
+    -fx-text-fill: $btn-text;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-background-radius: 4;
+    -fx-border-color: $border-mid;
+    -fx-border-width: 1;
+    -fx-border-radius: 4;
+    -fx-padding: 10 12;
+    -fx-alignment: CENTER;
+    -fx-text-alignment: CENTER;
+    -fx-wrap-text: true;
+    -fx-cursor: hand;
+
+    &:hover   { -fx-background-color: $hover-mid; -fx-border-color: $text-faint; }
+    &:pressed { -fx-background-color: $press-dark; }
+    &:focused {
+        -fx-background-color: $surface-dark;
+        -fx-border-color: $text-faint;
+        -fx-border-width: 1;
+        -fx-effect: none;
+        -fx-focus-color: transparent;
+        -fx-faint-focus-color: transparent;
+    }
+}
+
+// ── Resolution toggle buttons ─────────────────────────────────
+.res-toggle {
+    -fx-background-color: $surface;
+    -fx-text-fill: $text-muted;
+    -fx-font-size: 11px;
+    -fx-alignment: CENTER_LEFT;
+    -fx-background-radius: 3;
+    -fx-border-color: $border;
+    -fx-border-radius: 3;
+    -fx-padding: 6 10;
+    -fx-cursor: hand;
+
+    &:hover    { -fx-background-color: $hover-light; -fx-text-fill: $text; }
+    &:selected {
+        -fx-background-color: $selected-accent-bg;
+        -fx-text-fill: $accent;
+        -fx-border-color: $accent;
+
+        &:hover { -fx-background-color: $selected-accent-hover; }
+    }
+}
+
+// ── Watermark position pane ───────────────────────────────────
+.wm-position-pane {
+    -fx-background-color: $bg-deeper;
+    -fx-border-color: $border;
+    -fx-border-width: 1;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+}
+
+// ── Letterbox color picker ────────────────────────────────────
+.letterbox-picker {
+    -fx-background-color: $card;
+    -fx-border-color: $border;
+    -fx-border-radius: 3;
+    -fx-background-radius: 3;
+
+    .color-picker-label { -fx-text-fill: $text-mid; }
+}
+
+// ── Export footer ─────────────────────────────────────────────
+.export-footer {
+    -fx-background-color: $surface-dark;
+    -fx-border-color: $border;
+    -fx-border-width: 1 0 0 0;
+    -fx-alignment: CENTER;
+    -fx-fill-height: true;
+}
+
+// ── Watermark file label ──────────────────────────────────────
+.file-label {
+    -fx-text-fill: $text-sec;
+    -fx-font-size: 11px;
+    -fx-text-overrun: ELLIPSIS;
+}
+
+// ── Separator ─────────────────────────────────────────────────
+.separator > .line {
+    -fx-border-color: $border;
+    -fx-border-style: solid;
+    -fx-border-width: 0.5 0 0 0;
+}
+
+// ── ScrollBar global ──────────────────────────────────────────
+.scroll-bar {
+    -fx-background-color: $surface-dark;
+
+    .thumb {
+        -fx-background-color: $border;
+        -fx-background-radius: 3;
+
+        &:hover { -fx-background-color: $scrollbar-hover; }
+    }
+
+    .increment-button,
+    .decrement-button { -fx-background-color: transparent; -fx-padding: 0; }
+
+    .increment-arrow,
+    .decrement-arrow {
+        -fx-background-color: $text-faint;
+        -fx-shape: " ";
+        -fx-padding: 0;
+    }
+}
+
+// ── Video name bar ────────────────────────────────────────────
+.video-name-bar {
+    -fx-background-color: $surface-dark;
+    -fx-border-color: $border;
+    -fx-border-width: 0 0 1 0;
+}
+
+.video-name-label {
+    -fx-text-fill: $text-bright;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+// ── Export Dialog ─────────────────────────────────────────────
+.dialog-root {
+    -fx-background-color: $surface;
+    -fx-border-color: $border;
+    -fx-border-width: 1;
+    -fx-min-width: 400;
+}
+
+.dialog-header {
+    -fx-background-color: $surface-dark;
+    -fx-border-color: $border;
+    -fx-border-width: 0 0 1 0;
+}
+
+.dialog-title {
+    -fx-text-fill: $text;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+}
+
+.dialog-content {
+    -fx-background-color: $surface;
+}
+
+.dialog-footer {
+    -fx-background-color: $surface-dark;
+    -fx-border-color: $border;
+    -fx-border-width: 1 0 0 0;
+}
+
+.output-field {
+    -fx-background-color: $card;
+    -fx-text-fill: $text-bright;
+    -fx-prompt-text-fill: $text-dim;
+    -fx-border-color: $border;
+    -fx-border-radius: 3;
+    -fx-background-radius: 3;
+    -fx-font-size: 12px;
+    -fx-padding: 6 8;
+
+    &:focused { -fx-border-color: $accent; }
+}
+
+.dialog-choice {
+    -fx-background-color: $card;
+    -fx-border-color: $border;
+    -fx-border-radius: 3;
+    -fx-background-radius: 3;
+
+    .label { -fx-text-fill: $text-bright; }
+
+    .context-menu {
+        -fx-background-color: $surface;
+    }
+}
+
+// ── Focus ring ────────────────────────────────────────────────
+.button:focused,
+.toggle-button:focused,
+.slider:focused .thumb,
+.list-view:focused {
+    -fx-effect: dropshadow(gaussian, $accent-focus, 4, 0, 0, 0);
+}

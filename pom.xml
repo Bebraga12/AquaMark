@@ -56,6 +56,30 @@
                     <mainClass>com.aquamark/com.aquamark.AquaMarkApp</mainClass>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <execution>
+                        <id>compile-scss</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <configuration>
+                            <executable>npx</executable>
+                            <arguments>
+                                <argument>--yes</argument>
+                                <argument>sass</argument>
+                                <argument>src/main/resources/css/dark-theme.scss</argument>
+                                <argument>src/main/resources/css/dark-theme.css</argument>
+                                <argument>--no-source-map</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 </project>

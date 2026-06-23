@@ -67,45 +67,62 @@
             <!-- CENTER: player + timeline -->
             <VBox styleClass="center-pane" minHeight="0">
 
+                <!-- Video name bar (hidden until a video loads) -->
+                <HBox fx:id="videoNameBar" styleClass="video-name-bar"
+                      visible="false" managed="false" alignment="CENTER_LEFT">
+                    <padding><Insets top="5" right="12" bottom="5" left="12"/></padding>
+                    <Label fx:id="lblVideoName" text="" styleClass="video-name-label"/>
+                </HBox>
+
                 <!-- Player area -->
                 <BorderPane VBox.vgrow="ALWAYS" styleClass="player-container" minHeight="0">
                     <center>
                         <StackPane fx:id="playerStackPane" styleClass="player-stack" minHeight="0">
 
-                            <!-- Empty state (shown on top when no video) -->
+                            <!-- Empty state -->
                             <VBox fx:id="paneEmpty" styleClass="empty-state"
                                   alignment="CENTER" spacing="14">
                                 <Label text="&#x25B6;" styleClass="empty-icon"/>
                                 <Label text="Nenhum video selecionado" styleClass="empty-hint"/>
-                                <Label text="Use File &#x25B8; Adicionar Videos ou o botao abaixo"
+                                <Label text="Use o botão + Adicionar no painel esquerdo"
                                        styleClass="empty-sub"/>
                             </VBox>
 
                             <!-- MediaView -->
                             <MediaView fx:id="mediaView" styleClass="media-view"/>
+
+                            <!-- Watermark overlay (on top, mouse-transparent) -->
+                            <Pane fx:id="watermarkOverlayPane" mouseTransparent="true"
+                                  pickOnBounds="false"/>
+
                         </StackPane>
                     </center>
 
                     <bottom>
                       <VBox styleClass="player-controls">
 
-                          <!-- Seek bar -->
-                            <Slider fx:id="sliderSeek" styleClass="seek-slider"
-                                    max="100" value="0" blockIncrement="5"/>
-                            <!-- Controls row -->
-                            <HBox styleClass="controls-bar" alignment="CENTER_LEFT" spacing="10">
-                                <padding><Insets top="4" right="10" bottom="6" left="10"/></padding>
-                                <Button fx:id="btnPlayPause" text="&#x25B6;"
-                                        styleClass="play-btn" onAction="#onPlayPause"/>
-                                <Label fx:id="lblCurrentTime" text="00:00" styleClass="time-label"/>
-                                <Label text="/" styleClass="time-sep"/>
-                                <Label fx:id="lblTotalTime"   text="00:00" styleClass="time-label"/>
-                                <Pane HBox.hgrow="ALWAYS"/>
-                                <ToggleButton fx:id="btnMute" text="&#x266A;"
-                                              styleClass="mute-btn" onAction="#onMute"/>
-                                <Slider fx:id="sliderVolume" styleClass="volume-slider"
-                                        max="1.0" value="1.0" prefWidth="90"/>
-                            </HBox>
+                          <!-- Seek bar with trim highlight overlay -->
+                          <StackPane>
+                              <Slider fx:id="sliderSeek" styleClass="seek-slider"
+                                      max="100" value="0" blockIncrement="5"/>
+                              <Pane fx:id="seekTrimPane" mouseTransparent="true"
+                                    pickOnBounds="false"/>
+                          </StackPane>
+
+                          <!-- Controls row -->
+                          <HBox styleClass="controls-bar" alignment="CENTER_LEFT" spacing="10">
+                              <padding><Insets top="4" right="10" bottom="6" left="10"/></padding>
+                              <Button fx:id="btnPlayPause" text="&#x25B6;"
+                                      styleClass="play-btn" onAction="#onPlayPause"/>
+                              <Label fx:id="lblCurrentTime" text="00:00" styleClass="time-label"/>
+                              <Label text="/" styleClass="time-sep"/>
+                              <Label fx:id="lblTotalTime"   text="00:00" styleClass="time-label"/>
+                              <Pane HBox.hgrow="ALWAYS"/>
+                              <ToggleButton fx:id="btnMute" text="&#x266A;"
+                                            styleClass="mute-btn" onAction="#onMute"/>
+                              <Slider fx:id="sliderVolume" styleClass="volume-slider"
+                                      max="1.0" value="1.0" prefWidth="90"/>
+                          </HBox>
                         </VBox>
                     </bottom>
                 </BorderPane>

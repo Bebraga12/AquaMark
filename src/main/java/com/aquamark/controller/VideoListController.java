@@ -4,21 +4,30 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
+import javafx.stage.DirectoryChooser;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import java.io.File;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Consumer;
 
 public class VideoListController {
 
+    private static final Set<String> VIDEO_EXTENSIONS =
+        Set.of("mp4", "mov", "avi", "mkv", "webm", "m4v");
+
     @FXML private ListView<File> listVideos;
-    @FXML private Label lblCount;
-    @FXML private Button btnRemove;
-    @FXML private Button btnClear;
+    @FXML private Label          lblCount;
+    @FXML private Button         btnAdd;
+    @FXML private Button         btnRemove;
 
     private final ObservableList<File> videos = FXCollections.observableArrayList();
     private Consumer<File> onVideoSelected;
+
+    private ContextMenu menuAdd;
+    private ContextMenu menuRemove;
 
     @FXML
     public void initialize() {
@@ -38,68 +47,88 @@ public class VideoListController {
         });
 
         listVideos.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
-            if (newVal != null && onVideoSelected != null) {
-                onVideoSelected.accept(newVal);
-            }
+            if (newVal != null && onVideoSelected != null) onVideoSelected.accept(newVal);
         });
 
-        btnRemove.disableProperty().bind(
-            listVideos.getSelectionModel().selectedItemProperty().isNull()
-        );
-        btnClear.disableProperty().bind(
-            javafx.beans.binding.Bindings.isEmpty(videos)
-        );
-
+        buildMenuAdd();
+        buildMenuRemove();
         updateCount();
     }
 
-    @FXML
-    private void onAddVideos() {
+    // ── Context menus ─────────────────────────────────────────────
+
+    private void buildMenuAdd() {
+        MenuItem miVideos = new MenuItem("Selecionar Vídeo(s)");
+        MenuItem miPasta  = new MenuItem("Adicionar Pasta");
+        miVideos.setOnAction(e -> pickFiles());
+        miPasta.setOnAction(e -> pickFolder());
+        menuAdd = new ContextMenu(miVideos, miPasta);
+    }
+
+    private void buildMenuRemove() {
+        MenuItem miSelecionado = new MenuItem("Remover Selecionado");
+        MenuItem miTudo        = new MenuItem("Remover Tudo");
+        miSelecionado.setOnAction(e -> removeSelected());
+        miTudo.setOnAction(e -> removeAll());
+        menuRemove = new ContextMenu(miSelecionado, miTudo);
+
+        menuRemove.setOnShowing(e -> {
+            miSelecionado.setDisable(listVideos.getSelectionModel().getSelectedItem() == null);
+            miTudo.setDisable(videos.isEmpty());
+        });
+    }
+
+    @FXML private void onAdd()    { menuAdd.show(btnAdd,       javafx.geometry.Side.BOTTOM, 0, 2); }
+    @FXML private void onRemove() { menuRemove.show(btnRemove, javafx.geometry.Side.BOTTOM, 0, 2); }
+
+    private void pickFiles() {
         FileChooser chooser = new FileChooser();
-        chooser.setTitle("Adicionar Videos");
+        chooser.setTitle("Selecionar Vídeos");
         chooser.getExtensionFilters().add(
-            new FileChooser.ExtensionFilter("Videos", "*.mp4", "*.mov", "*.avi", "*.mkv", "*.webm", "*.m4v")
+            new FileChooser.ExtensionFilter("Vídeos", "*.mp4", "*.mov", "*.avi", "*.mkv", "*.webm", "*.m4v")
         );
         Stage stage = (Stage) listVideos.getScene().getWindow();
-        List<File> files = chooser.showOpenMultipleDialog(stage);
-        addVideos(files);
+        addVideos(chooser.showOpenMultipleDialog(stage));
     }
 
-    @FXML
-    private void onRemove() {
-        File selected = listVideos.getSelectionModel().getSelectedItem();
-        if (selected != null) {
-            videos.remove(selected);
-            updateCount();
-        }
+    private void pickFolder() {
+        DirectoryChooser chooser = new DirectoryChooser();
+        chooser.setTitle("Adicionar Pasta de Vídeos");
+        Stage stage = (Stage) listVideos.getScene().getWindow();
+        File dir = chooser.showDialog(stage);
+        if (dir == null) return;
+        File[] found = dir.listFiles(f ->
+            f.isFile() && VIDEO_EXTENSIONS.contains(extension(f.getName())));
+        if (found != null) addVideos(Arrays.asList(found));
     }
 
-    @FXML
-    private void onClear() {
-        videos.clear();
-        updateCount();
+    private void removeSelected() {
+        File sel = listVideos.getSelectionModel().getSelectedItem();
+        if (sel != null) { videos.remove(sel); updateCount(); }
     }
+
+    private void removeAll() { videos.clear(); updateCount(); }
+
+    // ── Public API ────────────────────────────────────────────────
 
     public void addVideos(List<File> files) {
         if (files == null) return;
-        for (File f : files) {
-            if (!videos.contains(f)) {
-                videos.add(f);
-            }
-        }
+        for (File f : files) if (!videos.contains(f)) videos.add(f);
         updateCount();
     }
 
-    public void setOnVideoSelected(Consumer<File> callback) {
-        this.onVideoSelected = callback;
-    }
+    public void setOnVideoSelected(Consumer<File> callback) { this.onVideoSelected = callback; }
+    public ObservableList<File> getVideos()                 { return videos; }
 
-    public ObservableList<File> getVideos() {
-        return videos;
-    }
+    // ── Helpers ───────────────────────────────────────────────────
 
     private void updateCount() {
         int n = videos.size();
         lblCount.setText(n + " " + (n == 1 ? "item" : "itens"));
+    }
+
+    private static String extension(String name) {
+        int dot = name.lastIndexOf('.');
+        return dot >= 0 ? name.substring(dot + 1).toLowerCase() : "";
     }
 }

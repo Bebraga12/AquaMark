@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.*?>
+
+<VBox xmlns="http://javafx.com/javafx/21"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.aquamark.controller.ExportDialogController"
+      styleClass="dialog-root" spacing="0">
+
+    <fx:define>
+        <ToggleGroup fx:id="qualityGroup"/>
+    </fx:define>
+
+    <!-- Header -->
+    <HBox styleClass="dialog-header" alignment="CENTER_LEFT">
+        <padding><Insets top="12" right="16" bottom="12" left="16"/></padding>
+        <Label fx:id="lblTitle" text="Exportar Vídeo" styleClass="dialog-title"/>
+    </HBox>
+
+    <!-- Content -->
+    <VBox styleClass="dialog-content" spacing="14">
+        <padding><Insets top="16" right="16" bottom="16" left="16"/></padding>
+
+        <!-- Output folder -->
+        <VBox spacing="6">
+            <Label text="PASTA DE SAÍDA" styleClass="section-title"/>
+            <HBox spacing="6" alignment="CENTER">
+                <TextField fx:id="fieldOutputDir" styleClass="output-field"
+                           editable="false" promptText="Selecione a pasta de destino..."
+                           HBox.hgrow="ALWAYS"/>
+                <Button text="Selecionar" styleClass="btn-secondary"
+                        onAction="#onPickOutputDir"/>
+            </HBox>
+        </VBox>
+
+        <!-- Quality -->
+        <VBox spacing="6">
+            <Label text="QUALIDADE" styleClass="section-title"/>
+            <HBox spacing="6">
+                <ToggleButton text="Baixa"  toggleGroup="$qualityGroup"
+                              styleClass="res-toggle" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+                <ToggleButton text="Média"  toggleGroup="$qualityGroup"
+                              styleClass="res-toggle" selected="true"
+                              HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+                <ToggleButton text="Alta"   toggleGroup="$qualityGroup"
+                              styleClass="res-toggle" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+            </HBox>
+        </VBox>
+
+        <!-- Format -->
+        <VBox spacing="6">
+            <Label text="FORMATO" styleClass="section-title"/>
+            <ChoiceBox fx:id="choiceFormat" maxWidth="Infinity" styleClass="dialog-choice"/>
+        </VBox>
+
+    </VBox>
+
+    <!-- Footer -->
+    <HBox styleClass="dialog-footer" spacing="8" alignment="CENTER_RIGHT">
+        <padding><Insets top="10" right="16" bottom="10" left="16"/></padding>
+        <Button text="Cancelar" styleClass="btn-secondary" onAction="#onCancel"/>
+        <Button fx:id="btnExport" text="Exportar" styleClass="btn-add" onAction="#onExport"/>
+    </HBox>
+
+</VBox>

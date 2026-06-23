@@ -1,6 +1,9 @@
 # Build output
 target/
 
+# CSS gerado pelo SCSS (regenerado via mvn)
+src/main/resources/css/dark-theme.css
+
 # Local tooling metadata
 .agents/
 .codex/

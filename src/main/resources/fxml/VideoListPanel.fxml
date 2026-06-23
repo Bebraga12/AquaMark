@@ -23,15 +23,11 @@
     <ListView fx:id="listVideos" VBox.vgrow="ALWAYS" styleClass="video-list"/>
 
     <!-- Actions -->
-    <VBox styleClass="list-actions" spacing="6">
+    <HBox styleClass="list-actions" spacing="6" alignment="CENTER">
         <padding><Insets top="8" right="8" bottom="8" left="8"/></padding>
-        <Button text="+ Adicionar Videos" styleClass="btn-add"
-                maxWidth="Infinity" onAction="#onAddVideos"/>
-        <HBox spacing="6">
-            <Button fx:id="btnRemove" text="Remover" styleClass="btn-secondary"
-                    HBox.hgrow="ALWAYS" maxWidth="Infinity" onAction="#onRemove"/>
-            <Button fx:id="btnClear" text="Limpar" styleClass="btn-secondary"
-                    HBox.hgrow="ALWAYS" maxWidth="Infinity" onAction="#onClear"/>
-        </HBox>
-    </VBox>
+        <Button fx:id="btnAdd" text="+ Adicionar" styleClass="btn-add"
+                HBox.hgrow="ALWAYS" maxWidth="Infinity" onAction="#onAdd"/>
+        <Button fx:id="btnRemove" text="Remover" styleClass="btn"
+                HBox.hgrow="ALWAYS" maxWidth="Infinity" onAction="#onRemove"/>
+    </HBox>
 </VBox>

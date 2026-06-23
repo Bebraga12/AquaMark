@@ -17,6 +17,7 @@ public class TimelineController {
     private double totalDuration = 0;
     private double startRatio = 0.0;
     private double endRatio   = 1.0;
+    private Runnable onTrimChanged;
 
     private Rectangle trackBg;
     private Rectangle selectionRect;
@@ -68,8 +69,7 @@ public class TimelineController {
         });
 
         rightHandle.setOnMouseDragged(e -> {
-            double x = rightHandle.getX() + e.getX();
-            double ratio = clamp(x / trimTrack.getWidth());
+            double ratio = clamp(e.getX() / trimTrack.getWidth());
             endRatio = Math.max(ratio, startRatio + 0.01);
             updatePositions();
             updateLabels();
@@ -89,6 +89,8 @@ public class TimelineController {
         rightHandle.setX(rx);
         selectionRect.setX(lx + HANDLE_W);
         selectionRect.setWidth(Math.max(0, rx - lx - HANDLE_W));
+
+        if (onTrimChanged != null) onTrimChanged.run();
     }
 
     private void updateLabels() {
@@ -112,8 +114,11 @@ public class TimelineController {
         updateLabels();
     }
 
-    public double getStartSeconds() { return startRatio * totalDuration; }
-    public double getEndSeconds()   { return endRatio * totalDuration; }
+    public double getStartSeconds()  { return startRatio * totalDuration; }
+    public double getEndSeconds()    { return endRatio   * totalDuration; }
+    public double getStartRatio()    { return startRatio; }
+    public double getEndRatio()      { return endRatio;   }
+    public void setOnTrimChanged(Runnable cb) { this.onTrimChanged = cb; }
 
     private double clamp(double v) {
         return Math.max(0.0, Math.min(1.0, v));

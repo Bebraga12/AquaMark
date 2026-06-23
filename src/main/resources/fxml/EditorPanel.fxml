@@ -27,14 +27,22 @@
                         <Label fx:id="lblRotationValue" text="0°" styleClass="value-label"/>
                     </HBox>
                     <Slider fx:id="sliderRotation" min="-180" max="180" value="0"
-                            styleClass="editor-slider" maxWidth="Infinity"/>
+                            styleClass="editor-slider" maxWidth="Infinity">
+                        <tooltip><Tooltip text="Rotação do vídeo (-180° a +180°)"/></tooltip>
+                    </Slider>
                     <HBox spacing="4">
                         <Button text="-90°" styleClass="btn-shortcut"
-                                HBox.hgrow="ALWAYS" maxWidth="Infinity" onAction="#onRotateMinus90"/>
+                                HBox.hgrow="ALWAYS" maxWidth="Infinity" onAction="#onRotateMinus90">
+                            <tooltip><Tooltip text="Girar -90°"/></tooltip>
+                        </Button>
                         <Button text="0°" styleClass="btn-shortcut"
-                                HBox.hgrow="ALWAYS" maxWidth="Infinity" onAction="#onState0"/>
+                                HBox.hgrow="ALWAYS" maxWidth="Infinity" onAction="#onState0">
+                            <tooltip><Tooltip text="Resetar rotação"/></tooltip>
+                        </Button>
                         <Button text="+90°" styleClass="btn-shortcut"
-                                HBox.hgrow="ALWAYS" maxWidth="Infinity" onAction="#onRotatePlus90"/>
+                                HBox.hgrow="ALWAYS" maxWidth="Infinity" onAction="#onRotatePlus90">
+                            <tooltip><Tooltip text="Girar +90°"/></tooltip>
+                        </Button>
                     </HBox>
                 </VBox>
 
@@ -61,7 +69,9 @@
                           visible="false" managed="false">
                         <padding><Insets top="4"/></padding>
                         <Label text="Cor do letterbox:" styleClass="field-label"/>
-                        <ColorPicker fx:id="colorLetterbox" styleClass="letterbox-picker"/>
+                        <ColorPicker fx:id="colorLetterbox" styleClass="letterbox-picker">
+                            <tooltip><Tooltip text="Cor do fundo nas bordas (letterbox)"/></tooltip>
+                        </ColorPicker>
                     </HBox>
                 </VBox>
 
@@ -75,7 +85,9 @@
                     <!-- File picker -->
                     <HBox spacing="6" alignment="CENTER_LEFT">
                         <Button text="Escolher arquivo" styleClass="btn-secondary"
-                                onAction="#onChooseWatermark"/>
+                                onAction="#onChooseWatermark">
+                            <tooltip><Tooltip text="Selecionar imagem ou GIF para usar como marca d'água"/></tooltip>
+                        </Button>
                         <Label fx:id="lblWatermarkFile" text="Nenhum arquivo"
                                styleClass="file-label" HBox.hgrow="ALWAYS"/>
                     </HBox>
@@ -84,7 +96,9 @@
                     <HBox alignment="CENTER_LEFT" spacing="6">
                         <Label text="Tamanho" styleClass="field-label" prefWidth="68"/>
                         <Slider fx:id="sliderWatermarkSize" min="5" max="80" value="20"
-                                styleClass="editor-slider" HBox.hgrow="ALWAYS"/>
+                                styleClass="editor-slider" HBox.hgrow="ALWAYS">
+                            <tooltip><Tooltip text="Tamanho da marca d'água (% da menor dimensão do vídeo)"/></tooltip>
+                        </Slider>
                         <Label fx:id="lblWatermarkSize" text="20%" styleClass="value-label" prefWidth="36"/>
                     </HBox>
 
@@ -92,7 +106,9 @@
                     <HBox alignment="CENTER_LEFT" spacing="6">
                         <Label text="Opacidade" styleClass="field-label" prefWidth="68"/>
                         <Slider fx:id="sliderWatermarkOpacity" min="0" max="100" value="100"
-                                styleClass="editor-slider" HBox.hgrow="ALWAYS"/>
+                                styleClass="editor-slider" HBox.hgrow="ALWAYS">
+                            <tooltip><Tooltip text="Opacidade da marca d'água (0% = invisível, 100% = opaco)"/></tooltip>
+                        </Slider>
                         <Label fx:id="lblWatermarkOpacity" text="100%" styleClass="value-label" prefWidth="36"/>
                     </HBox>
 
@@ -109,10 +125,16 @@
 
     <!-- Export button — região bottom do BorderPane: sempre visível -->
     <bottom>
-        <VBox styleClass="export-footer">
+        <HBox styleClass="export-footer" spacing="8" alignment="CENTER">
             <padding><Insets top="8" right="12" bottom="12" left="12"/></padding>
-            <Button fx:id="btnExport" text="Exportar este video" styleClass="btn-export"
-                    maxWidth="Infinity" onAction="#onExport"/>
-        </VBox>
+            <Button fx:id="btnExport" text="Exportar este vídeo" styleClass="btn-export"
+              HBox.hgrow="ALWAYS" maxWidth="Infinity" onAction="#onExport">
+                <tooltip><Tooltip text="Exportar o vídeo selecionado com as configurações atuais"/></tooltip>
+            </Button>
+            <Button fx:id="btnExportAll" text="Exportar todos" styleClass="btn-export"
+              HBox.hgrow="ALWAYS" maxWidth="Infinity" onAction="#onExportAll">
+                <tooltip><Tooltip text="Exportar todos os vídeos da lista com as configurações atuais"/></tooltip>
+            </Button>
+        </HBox>
     </bottom>
 </BorderPane>

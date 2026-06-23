@@ -4,8 +4,11 @@ import com.aquamark.model.ResolutionPreset;
 import com.aquamark.model.WatermarkConfig;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.geometry.Point2D;
 import javafx.scene.Cursor;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
@@ -14,7 +17,9 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Rectangle;
 import javafx.stage.FileChooser;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 import java.io.File;
 
 public class EditorController {
@@ -41,9 +46,12 @@ public class EditorController {
     @FXML private Pane   watermarkPositionPane;
 
     @FXML private Button btnExport;
+    @FXML private Button btnExportAll;
 
     private File     watermarkFile;
     private Runnable onExportCallback;
+    private Runnable onWatermarkChanged;
+    private int      totalVideos = 1;
 
     private double wmX = 0.95;
     private double wmY = 0.05;
@@ -58,11 +66,15 @@ public class EditorController {
         sliderRotation.valueProperty().addListener((obs, o, n) ->
             lblRotationValue.setText(String.format("%.0f°", n.doubleValue())));
 
-        sliderWatermarkSize.valueProperty().addListener((obs, o, n) ->
-            lblWatermarkSize.setText(String.format("%.0f%%", n.doubleValue())));
+        sliderWatermarkSize.valueProperty().addListener((obs, o, n) -> {
+            lblWatermarkSize.setText(String.format("%.0f%%", n.doubleValue()));
+            notifyWatermarkChanged();
+        });
 
-        sliderWatermarkOpacity.valueProperty().addListener((obs, o, n) ->
-            lblWatermarkOpacity.setText(String.format("%.0f%%", n.doubleValue())));
+        sliderWatermarkOpacity.valueProperty().addListener((obs, o, n) -> {
+            lblWatermarkOpacity.setText(String.format("%.0f%%", n.doubleValue()));
+            notifyWatermarkChanged();
+        });
 
         resolutionGroup.selectedToggleProperty().addListener((obs, o, n) -> {
             boolean isOriginal = (n == btnResOriginal || n == null);
@@ -77,6 +89,7 @@ public class EditorController {
 
         watermarkPositionPane.widthProperty().addListener((o, a, b) -> rebuildPreview());
         watermarkPositionPane.heightProperty().addListener((o, a, b) -> rebuildPreview());
+        Tooltip.install(watermarkPositionPane, new Tooltip("Arraste para posicionar a marca d'água no vídeo"));
     }
 
     // ── Preview drag ──────────────────────────────────────────
@@ -134,6 +147,7 @@ public class EditorController {
             wmX = Math.max(0, Math.min(1, (p.getX() - fRx) / fRW));
             wmY = Math.max(0, Math.min(1, (p.getY() - fRy) / fRH));
             updateCircle(fRx, fRy, fRW, fRH);
+            notifyWatermarkChanged();
             e.consume();
         };
 
@@ -183,6 +197,7 @@ public class EditorController {
         if (file != null) {
             watermarkFile = file;
             lblWatermarkFile.setText(file.getName());
+            notifyWatermarkChanged();
         }
     }
 
@@ -190,10 +205,65 @@ public class EditorController {
 
     @FXML
     private void onExport() {
-        if (onExportCallback != null) onExportCallback.run();
+        openExportDialog(false);
     }
 
-    public void setOnExport(Runnable callback) { this.onExportCallback = callback; }
+    @FXML
+    private void onExportAll() {
+        openExportDialog(true);
+    }
+
+    public void setOnExport(Runnable callback)          { this.onExportCallback    = callback; }
+    public void setOnWatermarkChanged(Runnable callback){ this.onWatermarkChanged  = callback; }
+    public void setTotalVideos(int count)               { this.totalVideos = count; }
+
+    public void setVideoLoaded(boolean loaded) {
+        btnExport.setDisable(!loaded);
+        btnExportAll.setDisable(!loaded);
+    }
+
+    private void notifyWatermarkChanged() {
+        if (onWatermarkChanged != null) onWatermarkChanged.run();
+    }
+
+    public File   getWatermarkFile()          { return watermarkFile; }
+    public double getWmX()                    { return wmX; }
+    public double getWmY()                    { return wmY; }
+    public double getWatermarkSizePercent()   { return sliderWatermarkSize.getValue(); }
+    public double getWatermarkOpacityPercent(){ return sliderWatermarkOpacity.getValue(); }
+
+    private void openExportDialog(boolean exportAll) {
+        try {
+            FXMLLoader loader = new FXMLLoader(
+                getClass().getResource("/fxml/ExportDialog.fxml"));
+            Parent root = loader.load();
+
+            ExportDialogController ctrl = loader.getController();
+            ctrl.setExportAll(exportAll, exportAll ? totalVideos : 1);
+
+            Stage dialog = new Stage();
+            dialog.initModality(Modality.APPLICATION_MODAL);
+            dialog.initOwner((Stage) btnExport.getScene().getWindow());
+            dialog.initStyle(StageStyle.UNDECORATED);
+            dialog.setResizable(false);
+
+            Scene scene = new Scene(root);
+            scene.getStylesheets().add(
+                getClass().getResource("/css/dark-theme.css").toExternalForm());
+            dialog.setScene(scene);
+
+            dialog.setOnShown(e -> centerOnOwner(dialog));
+            dialog.showAndWait();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void centerOnOwner(Stage dialog) {
+        Stage owner = (Stage) btnExport.getScene().getWindow();
+        dialog.setX(owner.getX() + (owner.getWidth()  - dialog.getWidth())  / 2);
+        dialog.setY(owner.getY() + (owner.getHeight() - dialog.getHeight()) / 2);
+    }
 
     // ── Getters ───────────────────────────────────────────────
 
