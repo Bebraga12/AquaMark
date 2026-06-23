@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <?import javafx.scene.control.*?>
+<?import javafx.scene.image.*?>
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.media.*?>
 <?import javafx.geometry.*?>
@@ -90,6 +91,10 @@
 
                             <!-- MediaView -->
                             <MediaView fx:id="mediaView" styleClass="media-view"/>
+
+                            <!-- FFmpeg frame preview (fallback quando MediaPlayer falha) -->
+                            <ImageView fx:id="previewImageView" preserveRatio="true"
+                                       visible="false" mouseTransparent="true"/>
 
                             <!-- Watermark overlay (on top, mouse-transparent) -->
                             <Pane fx:id="watermarkOverlayPane" mouseTransparent="true"

@@ -38,12 +38,12 @@
         <VBox spacing="6">
             <Label text="QUALIDADE" styleClass="section-title"/>
             <HBox spacing="6">
-                <ToggleButton text="Baixa"  toggleGroup="$qualityGroup"
+                <ToggleButton fx:id="btnQualityLow"  text="Baixa" toggleGroup="$qualityGroup"
                               styleClass="res-toggle" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
-                <ToggleButton text="Média"  toggleGroup="$qualityGroup"
+                <ToggleButton fx:id="btnQualityMid"  text="Média" toggleGroup="$qualityGroup"
                               styleClass="res-toggle" selected="true"
                               HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
-                <ToggleButton text="Alta"   toggleGroup="$qualityGroup"
+                <ToggleButton fx:id="btnQualityHigh" text="Alta"  toggleGroup="$qualityGroup"
                               styleClass="res-toggle" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
             </HBox>
         </VBox>

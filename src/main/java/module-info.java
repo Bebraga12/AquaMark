@@ -4,6 +4,7 @@ module com.aquamark {
     requires javafx.media;
     requires javafx.graphics;
     requires javafx.base;
+    requires java.desktop;
 
     exports com.aquamark;
     opens com.aquamark to javafx.fxml, javafx.graphics;

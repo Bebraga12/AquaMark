@@ -4,11 +4,8 @@ import com.aquamark.model.ResolutionPreset;
 import com.aquamark.model.WatermarkConfig;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
 import javafx.geometry.Point2D;
 import javafx.scene.Cursor;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
@@ -17,9 +14,7 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Rectangle;
 import javafx.stage.FileChooser;
-import javafx.stage.Modality;
 import javafx.stage.Stage;
-import javafx.stage.StageStyle;
 import java.io.File;
 
 public class EditorController {
@@ -50,12 +45,11 @@ public class EditorController {
 
     private File     watermarkFile;
     private Runnable onExportCallback;
+    private Runnable onExportAllCallback;
     private Runnable onWatermarkChanged;
-    private int      totalVideos = 1;
 
     private double wmX = 0.95;
     private double wmY = 0.05;
-    // Razão de aspecto do preview (largura/altura)
     private double previewRatio = 16.0 / 9.0;
 
     private Rectangle previewRect;
@@ -89,10 +83,11 @@ public class EditorController {
 
         watermarkPositionPane.widthProperty().addListener((o, a, b) -> rebuildPreview());
         watermarkPositionPane.heightProperty().addListener((o, a, b) -> rebuildPreview());
-        Tooltip.install(watermarkPositionPane, new Tooltip("Arraste para posicionar a marca d'água no vídeo"));
+        Tooltip.install(watermarkPositionPane,
+            new Tooltip("Arraste para posicionar a marca d'água no vídeo"));
     }
 
-    // ── Preview drag ──────────────────────────────────────────
+    // ── Preview drag ──────────────────────────────────────────────
 
     private void rebuildPreview() {
         double pW = watermarkPositionPane.getWidth();
@@ -162,34 +157,23 @@ public class EditorController {
         wmCircle.setCenterY(ry + wmY * rH);
     }
 
-    // ── Rotation shortcuts ────────────────────────────────────
+    // ── Rotation shortcuts ─────────────────────────────────────────
 
     @FXML private void onRotateMinus90() { shiftRotation(-90); }
-    @FXML private void onRotatePlus90()  { shiftRotation(90); }
+    @FXML private void onRotatePlus90()  { shiftRotation(90);  }
     @FXML private void onState0()        { sliderRotation.setValue(0); }
 
     private void shiftRotation(double delta) {
-      double currentValue = sliderRotation.getValue();
-      double newValue = currentValue + delta;
-
-      if (newValue > 180) {
-          sliderRotation.setValue(180);
-
-      } else  if (newValue < -180) {
-        sliderRotation.setValue(-180);
-
-      } else {
-        sliderRotation.setValue(newValue);
-        
-      }
+        double v = sliderRotation.getValue() + delta;
+        sliderRotation.setValue(Math.max(-180, Math.min(180, v)));
     }
 
-    // ── Watermark file ────────────────────────────────────────
+    // ── Watermark file ─────────────────────────────────────────────
 
     @FXML
     private void onChooseWatermark() {
         FileChooser chooser = new FileChooser();
-        chooser.setTitle("Escolher Marca d'Agua");
+        chooser.setTitle("Escolher Marca d'Água");
         chooser.getExtensionFilters().add(
             new FileChooser.ExtensionFilter("Imagens", "*.png", "*.jpg", "*.jpeg", "*.gif"));
         Stage stage = (Stage) btnExport.getScene().getWindow();
@@ -201,71 +185,16 @@ public class EditorController {
         }
     }
 
-    // ── Export ────────────────────────────────────────────────
+    // ── Export buttons → callbacks (MainController abre o dialog) ──
 
-    @FXML
-    private void onExport() {
-        openExportDialog(false);
-    }
+    @FXML private void onExport()    { if (onExportCallback    != null) onExportCallback.run();    }
+    @FXML private void onExportAll() { if (onExportAllCallback != null) onExportAllCallback.run(); }
 
-    @FXML
-    private void onExportAll() {
-        openExportDialog(true);
-    }
+    public void setOnExport(Runnable cb)          { this.onExportCallback    = cb; }
+    public void setOnExportAll(Runnable cb)       { this.onExportAllCallback = cb; }
+    public void setOnWatermarkChanged(Runnable cb){ this.onWatermarkChanged  = cb; }
 
-    public void setOnExport(Runnable callback)          { this.onExportCallback    = callback; }
-    public void setOnWatermarkChanged(Runnable callback){ this.onWatermarkChanged  = callback; }
-    public void setTotalVideos(int count)               { this.totalVideos = count; }
-
-    public void setVideoLoaded(boolean loaded) {
-        btnExport.setDisable(!loaded);
-        btnExportAll.setDisable(!loaded);
-    }
-
-    private void notifyWatermarkChanged() {
-        if (onWatermarkChanged != null) onWatermarkChanged.run();
-    }
-
-    public File   getWatermarkFile()          { return watermarkFile; }
-    public double getWmX()                    { return wmX; }
-    public double getWmY()                    { return wmY; }
-    public double getWatermarkSizePercent()   { return sliderWatermarkSize.getValue(); }
-    public double getWatermarkOpacityPercent(){ return sliderWatermarkOpacity.getValue(); }
-
-    private void openExportDialog(boolean exportAll) {
-        try {
-            FXMLLoader loader = new FXMLLoader(
-                getClass().getResource("/fxml/ExportDialog.fxml"));
-            Parent root = loader.load();
-
-            ExportDialogController ctrl = loader.getController();
-            ctrl.setExportAll(exportAll, exportAll ? totalVideos : 1);
-
-            Stage dialog = new Stage();
-            dialog.initModality(Modality.APPLICATION_MODAL);
-            dialog.initOwner((Stage) btnExport.getScene().getWindow());
-            dialog.initStyle(StageStyle.UNDECORATED);
-            dialog.setResizable(false);
-
-            Scene scene = new Scene(root);
-            scene.getStylesheets().add(
-                getClass().getResource("/css/dark-theme.css").toExternalForm());
-            dialog.setScene(scene);
-
-            dialog.setOnShown(e -> centerOnOwner(dialog));
-            dialog.showAndWait();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void centerOnOwner(Stage dialog) {
-        Stage owner = (Stage) btnExport.getScene().getWindow();
-        dialog.setX(owner.getX() + (owner.getWidth()  - dialog.getWidth())  / 2);
-        dialog.setY(owner.getY() + (owner.getHeight() - dialog.getHeight()) / 2);
-    }
-
-    // ── Getters ───────────────────────────────────────────────
+    // ── Getters ────────────────────────────────────────────────────
 
     public double getRotation() { return sliderRotation.getValue(); }
 
@@ -278,7 +207,7 @@ public class EditorController {
     }
 
     public String getLetterboxColor() {
-        javafx.scene.paint.Color c = colorLetterbox.getValue();
+        Color c = colorLetterbox.getValue();
         return String.format("#%02x%02x%02x",
             (int)(c.getRed()   * 255),
             (int)(c.getGreen() * 255),
@@ -294,5 +223,15 @@ public class EditorController {
         cfg.setPositionX(wmX);
         cfg.setPositionY(wmY);
         return cfg;
+    }
+
+    public File   getWatermarkFile()           { return watermarkFile; }
+    public double getWmX()                     { return wmX; }
+    public double getWmY()                     { return wmY; }
+    public double getWatermarkSizePercent()    { return sliderWatermarkSize.getValue(); }
+    public double getWatermarkOpacityPercent() { return sliderWatermarkOpacity.getValue(); }
+
+    private void notifyWatermarkChanged() {
+        if (onWatermarkChanged != null) onWatermarkChanged.run();
     }
 }

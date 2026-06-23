@@ -1,9 +1,15 @@
 package com.aquamark.controller;
 
-import com.aquamark.service.ExportService;
+import com.aquamark.model.TrimRange;
+import com.aquamark.model.VideoProject;
+import com.aquamark.service.PreviewService;
 import com.aquamark.util.TimeFormatter;
+import javafx.animation.AnimationTimer;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.SplitPane;
 import javafx.scene.image.Image;
@@ -18,10 +24,16 @@ import javafx.scene.media.MediaView;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.stage.FileChooser;
+import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 import javafx.util.Duration;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.InputStream;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class MainController {
 
@@ -56,26 +68,49 @@ public class MainController {
     @FXML private Pane      seekTrimPane;
     private Rectangle       seekTrimRect;
 
+    // FFmpeg pipe preview (fallback quando MediaPlayer não funciona)
+    @FXML private ImageView      previewImageView;
+    private final PreviewService previewService    = new PreviewService();
+    private boolean              ffmpegPreviewMode = false;
+    private volatile double      ffmpegPosition    = 0;   // escrito pelo reader, lido pelo FX timer
+    private double               ffmpegDuration    = 0;
+    private double               ffmpegFps         = 30;
+    private double               pipeStartTime     = 0;
+    private volatile Image       latestFrame       = null; // handoff reader → FX thread
+    private Process              pipeProcess       = null;
+    private Thread               readerThread      = null;
+    private javafx.animation.AnimationTimer displayTimer = null;
+
+    // Processo ffplay para áudio
+    private Process audioPipeProcess = null;
+
     private MediaPlayer mediaPlayer;
     private boolean     isPlaying    = false;
     private boolean     seekDragging = false;
     private boolean     videoLoaded  = false;
+    private File        currentFile  = null;
 
     private double[] savedDividers = null;
-
-    private final ExportService exportService = new ExportService();
 
     @FXML
     public void initialize() {
         videoListPanelController.setOnVideoSelected(this::loadVideo);
         editorPanelController.setOnExport(this::doExportCurrent);
+        editorPanelController.setOnExportAll(this::doExportAll);
         editorPanelController.setOnWatermarkChanged(this::updateWatermarkOverlay);
         timelinePanelController.setOnTrimChanged(this::updateSeekTrim);
 
-        // MediaView preenche o StackPane preservando proporção
-        playerStackPane.widthProperty().addListener((obs, o, n)  -> mediaView.setFitWidth(n.doubleValue()));
-        playerStackPane.heightProperty().addListener((obs, o, n) -> mediaView.setFitHeight(n.doubleValue()));
+        // MediaView e previewImageView preenchem o StackPane preservando proporção
+        playerStackPane.widthProperty().addListener((obs, o, n) -> {
+            mediaView.setFitWidth(n.doubleValue());
+            previewImageView.setFitWidth(n.doubleValue());
+        });
+        playerStackPane.heightProperty().addListener((obs, o, n) -> {
+            mediaView.setFitHeight(n.doubleValue());
+            previewImageView.setFitHeight(n.doubleValue());
+        });
         mediaView.setPreserveRatio(true);
+        previewImageView.setPreserveRatio(true);
 
         // Watermark overlay
         wmOverlay = new ImageView();
@@ -99,10 +134,17 @@ public class MainController {
         sliderSeek.setOnMousePressed(e -> seekDragging = true);
         sliderSeek.setOnMouseReleased(e -> {
             seekDragging = false;
-            if (mediaPlayer != null) mediaPlayer.seek(Duration.seconds(sliderSeek.getValue()));
+            double val = sliderSeek.getValue();
+            if (ffmpegPreviewMode)          ffmpegSeekTo(val);
+            else if (mediaPlayer != null)   mediaPlayer.seek(Duration.seconds(val));
         });
         sliderVolume.valueProperty().addListener((obs, o, n) -> {
             if (mediaPlayer != null) mediaPlayer.setVolume(n.doubleValue());
+        });
+        // Ao soltar o slider de volume, reinicia o áudio com o novo valor
+        sliderVolume.setOnMouseReleased(e -> {
+            if (ffmpegPreviewMode && isPlaying && !btnMute.isSelected())
+                startAudioPipe(ffmpegPosition);
         });
 
         // Fullscreen handling
@@ -130,10 +172,19 @@ public class MainController {
     }
 
     private void loadVideo(File file) {
+        // Para e descarta player/preview anterior
         if (mediaPlayer != null) {
             mediaPlayer.stop();
             mediaPlayer.dispose();
+            mediaPlayer = null;
         }
+        stopPipe();
+        ffmpegPreviewMode = false;
+        ffmpegPosition    = 0;
+        previewImageView.setVisible(false);
+        previewImageView.setImage(null);
+        isPlaying = false;
+        btnPlayPause.setText("▶");
 
         // Oculta o empty-state imediatamente — independente de codec/GStreamer
         paneEmpty.setVisible(false);
@@ -144,41 +195,49 @@ public class MainController {
         videoNameBar.setVisible(true);
         videoNameBar.setManaged(true);
 
-        // Habilita exportar
         videoLoaded = true;
-        editorPanelController.setVideoLoaded(true);
-        editorPanelController.setTotalVideos(videoListPanelController.getVideos().size());
+        currentFile = file;
 
-        Media media = new Media(file.toURI().toString());
-        mediaPlayer = new MediaPlayer(media);
-        mediaView.setMediaPlayer(mediaPlayer);
+        try {
+            Media media = new Media(file.toURI().toString());
+            mediaPlayer = new MediaPlayer(media);
+            mediaView.setMediaPlayer(mediaPlayer);
 
-        mediaPlayer.setOnReady(() -> {
-            Duration total = mediaPlayer.getTotalDuration();
-            sliderSeek.setMax(total.toSeconds());
-            lblTotalTime.setText(TimeFormatter.format(total.toSeconds()));
-            timelinePanelController.setTotalDuration(total.toSeconds());
-            updateSeekTrim();
-        });
+            mediaPlayer.setOnReady(() -> {
+                Duration total = mediaPlayer.getTotalDuration();
+                sliderSeek.setMax(total.toSeconds());
+                lblTotalTime.setText(TimeFormatter.format(total.toSeconds()));
+                timelinePanelController.setTotalDuration(total.toSeconds());
+                updateSeekTrim();
+                applyTrimToMediaPlayer();
+            });
 
-        mediaPlayer.setOnError(() -> {
-            MediaPlayer.Status st = mediaPlayer.getStatus();
-            System.err.println("[AquaMark] Erro ao carregar mídia: "
-                + mediaPlayer.getError() + " | status=" + st);
-        });
+            // Quando chega ao fim do corte, volta ao início do corte
+            mediaPlayer.setOnStopped(() -> {
+                double trimStart = timelinePanelController.getStartSeconds();
+                mediaPlayer.seek(Duration.seconds(trimStart));
+            });
 
-        mediaPlayer.currentTimeProperty().addListener((obs, o, n) -> {
-            if (!seekDragging) sliderSeek.setValue(n.toSeconds());
-            lblCurrentTime.setText(TimeFormatter.format(n.toSeconds()));
-        });
+            mediaPlayer.setOnError(() ->
+                System.err.println("[AquaMark] Erro de mídia: " + mediaPlayer.getError()));
 
-        mediaPlayer.statusProperty().addListener((obs, o, n) -> {
-            isPlaying = (n == MediaPlayer.Status.PLAYING);
-            btnPlayPause.setText(isPlaying ? "⏸" : "▶");
-        });
+            mediaPlayer.currentTimeProperty().addListener((obs, o, n) -> {
+                if (!seekDragging) sliderSeek.setValue(n.toSeconds());
+                lblCurrentTime.setText(TimeFormatter.format(n.toSeconds()));
+            });
 
-        mediaPlayer.setVolume(sliderVolume.getValue());
-        mediaPlayer.play();
+            mediaPlayer.statusProperty().addListener((obs, o, n) -> {
+                isPlaying = (n == MediaPlayer.Status.PLAYING);
+                btnPlayPause.setText(isPlaying ? "⏸" : "▶");
+            });
+
+            mediaPlayer.setVolume(sliderVolume.getValue());
+            mediaPlayer.play();
+        } catch (Exception e) {
+            // JavaFX Media não suporta o codec — usa preview via FFmpeg
+            System.err.println("[AquaMark] MediaPlayer falhou, usando preview FFmpeg: " + e.getMessage());
+            startFFmpegPreview(file);
+        }
     }
 
     // ── Watermark overlay ─────────────────────────────────────
@@ -250,6 +309,9 @@ public class MainController {
         seekTrimRect.setWidth(Math.max(0, endX - startX));
         seekTrimRect.setHeight(trackH);
         seekTrimRect.setVisible(true);
+
+        // Atualiza stop time do MediaPlayer quando o corte muda
+        applyTrimToMediaPlayer();
     }
 
     // ── MenuBar ──────────────────────────────────────────────
@@ -279,7 +341,7 @@ public class MainController {
     }
     @FXML private void onProjectSettings() { /* TODO */ }
     @FXML private void onExportSelected()  { doExportCurrent(); }
-    @FXML private void onExportAll()       { /* TODO */ }
+    @FXML private void onExportAll()       { doExportAll();     }
 
     @FXML private void onAbout() {
         Alert a = new Alert(Alert.AlertType.INFORMATION);
@@ -289,20 +351,262 @@ public class MainController {
         a.showAndWait();
     }
 
+    // ── FFmpeg pipe preview ───────────────────────────────────
+    //
+    // Um único processo ffmpeg emite frames MJPEG pelo stdout.
+    // Um thread leitor parseia os bytes (SOI=FF D8 … EOI=FF D9),
+    // decodifica o JPEG e armazena em `latestFrame`.
+    // O AnimationTimer (roda no FX thread a ~60fps) aplica o frame
+    // ao ImageView e atualiza o seek slider.
+
+    private void startFFmpegPreview(File file) {
+        ffmpegPreviewMode = true;
+        ffmpegPosition    = 0;
+        previewImageView.setVisible(true);
+
+        Thread init = new Thread(() -> {
+            try {
+                double dur = previewService.getDuration(file);
+                double fps = previewService.getFps(file);
+                Image  frm = previewService.extractFrame(file, 0);
+                Platform.runLater(() -> {
+                    ffmpegDuration = dur;
+                    ffmpegFps      = fps > 0 ? fps : 30;
+                    sliderSeek.setMax(dur);
+                    lblTotalTime.setText(TimeFormatter.format(dur));
+                    timelinePanelController.setTotalDuration(dur);
+                    updateSeekTrim();
+                    if (frm != null) previewImageView.setImage(frm);
+                });
+            } catch (Exception e) {
+                System.err.println("[AquaMark] ffprobe falhou: " + e.getMessage());
+            }
+        }, "preview-init");
+        init.setDaemon(true);
+        init.start();
+    }
+
+    private void stopPipe() {
+        if (displayTimer != null) { displayTimer.stop(); displayTimer = null; }
+        if (readerThread != null) { readerThread.interrupt(); readerThread = null; }
+        if (pipeProcess  != null) { pipeProcess.destroyForcibly(); pipeProcess = null; }
+        latestFrame = null;
+        stopAudioPipe();
+    }
+
+    private void stopAudioPipe() {
+        if (audioPipeProcess != null) { audioPipeProcess.destroyForcibly(); audioPipeProcess = null; }
+    }
+
+    private void startAudioPipe(double startTime) {
+        stopAudioPipe();
+        try {
+            int vol = btnMute.isSelected() ? 0 : (int) Math.round(sliderVolume.getValue() * 100);
+            audioPipeProcess = previewService.startAudioPlayer(currentFile, startTime, vol);
+        } catch (Exception e) {
+            System.err.println("[AquaMark] Áudio (ffplay) falhou: " + e.getMessage());
+        }
+    }
+
+    private void ffmpegPlay() {
+        stopPipe();
+
+        double trimStart = timelinePanelController.getStartSeconds();
+        double trimEnd   = timelinePanelController.getEndSeconds();
+
+        // Se estiver fora do corte, volta para o início do corte
+        if (ffmpegPosition < trimStart || ffmpegPosition >= trimEnd) {
+            ffmpegPosition = trimStart;
+            sliderSeek.setValue(ffmpegPosition);
+            lblCurrentTime.setText(TimeFormatter.format(ffmpegPosition));
+        }
+
+        pipeStartTime = ffmpegPosition;
+        long[] frameIdx = {0};
+
+        try {
+            pipeProcess = previewService.startPipe(currentFile, pipeStartTime);
+        } catch (Exception e) {
+            System.err.println("[AquaMark] Erro ao iniciar pipe: " + e.getMessage());
+            return;
+        }
+
+        InputStream stream = pipeProcess.getInputStream();
+
+        readerThread = new Thread(() -> {
+            ByteArrayOutputStream buf = new ByteArrayOutputStream(1 << 17);
+            int prev = -1, b;
+            boolean inFrame = false;
+            try {
+                while ((b = stream.read()) != -1 && !Thread.currentThread().isInterrupted()) {
+                    if (!inFrame) {
+                        if (prev == 0xFF && b == 0xD8) {
+                            inFrame = true;
+                            buf.reset();
+                            buf.write(0xFF); buf.write(0xD8);
+                        }
+                    } else {
+                        buf.write(b);
+                        if (prev == 0xFF && b == 0xD9) {
+                            byte[] jpeg = buf.toByteArray();
+                            frameIdx[0]++;
+                            ffmpegPosition = pipeStartTime + frameIdx[0] / ffmpegFps;
+                            latestFrame = new Image(new ByteArrayInputStream(jpeg));
+                            buf.reset();
+                            inFrame = false;
+                        }
+                    }
+                    prev = b;
+                }
+            } catch (Exception ignored) {}
+        }, "pipe-reader");
+        readerThread.setDaemon(true);
+        readerThread.start();
+
+        displayTimer = new AnimationTimer() {
+            @Override public void handle(long now) {
+                Image frame = latestFrame;
+                if (frame != null) {
+                    latestFrame = null;
+                    previewImageView.setImage(frame);
+                }
+                double pos = ffmpegPosition;
+                if (!seekDragging && pos > 0) {
+                    sliderSeek.setValue(Math.min(pos, ffmpegDuration));
+                    lblCurrentTime.setText(TimeFormatter.format(pos));
+                }
+                // Para ao atingir o fim do corte
+                if (pos >= timelinePanelController.getEndSeconds()) {
+                    ffmpegPause();
+                    ffmpegPosition = timelinePanelController.getStartSeconds();
+                    Platform.runLater(() -> {
+                        sliderSeek.setValue(ffmpegPosition);
+                        lblCurrentTime.setText(TimeFormatter.format(ffmpegPosition));
+                    });
+                }
+            }
+        };
+        displayTimer.start();
+        startAudioPipe(pipeStartTime);
+        isPlaying = true;
+        btnPlayPause.setText("⏸");
+    }
+
+    private void ffmpegPause() {
+        stopPipe();
+        isPlaying = false;
+        btnPlayPause.setText("▶");
+    }
+
+    private void ffmpegSeekTo(double seconds) {
+        boolean wasPlaying = isPlaying;
+        ffmpegPause();
+        ffmpegPosition = seconds;
+        lblCurrentTime.setText(TimeFormatter.format(seconds));
+        // Mostra frame estático no ponto do seek
+        Thread t = new Thread(() -> {
+            try {
+                Image img = previewService.extractFrame(currentFile, seconds);
+                Platform.runLater(() -> { if (img != null) previewImageView.setImage(img); });
+            } catch (Exception ignored) {}
+        }, "seek-frame");
+        t.setDaemon(true);
+        t.start();
+        if (wasPlaying) ffmpegPlay();
+    }
+
+    private void applyTrimToMediaPlayer() {
+        if (mediaPlayer == null) return;
+        double trimStart = timelinePanelController.getStartSeconds();
+        double trimEnd   = timelinePanelController.getEndSeconds();
+        mediaPlayer.setStartTime(Duration.seconds(trimStart));
+        if (trimEnd > 0) mediaPlayer.setStopTime(Duration.seconds(trimEnd));
+    }
+
     // ── Player controls ──────────────────────────────────────
 
     @FXML private void onPlayPause() {
+        if (ffmpegPreviewMode) {
+            if (isPlaying) ffmpegPause(); else ffmpegPlay();
+            return;
+        }
         if (mediaPlayer == null) return;
-        if (isPlaying) mediaPlayer.pause();
-        else           mediaPlayer.play();
+        if (isPlaying) {
+            mediaPlayer.pause();
+        } else {
+            applyTrimToMediaPlayer();
+            double trimStart = timelinePanelController.getStartSeconds();
+            double trimEnd   = timelinePanelController.getEndSeconds();
+            double pos       = mediaPlayer.getCurrentTime().toSeconds();
+            if (pos < trimStart || pos >= trimEnd)
+                mediaPlayer.seek(Duration.seconds(trimStart));
+            mediaPlayer.play();
+        }
     }
 
     @FXML private void onMute() {
-        if (mediaPlayer == null) return;
         boolean muted = btnMute.isSelected();
-        mediaPlayer.setMute(muted);
         btnMute.setText(muted ? "✕" : "♪");
+        if (mediaPlayer != null) mediaPlayer.setMute(muted);
+        if (ffmpegPreviewMode && isPlaying) {
+            if (muted) stopAudioPipe();
+            else       startAudioPipe(ffmpegPosition);
+        }
     }
 
-    private void doExportCurrent() { /* TODO */ }
+    private void doExportCurrent() {
+        if (currentFile == null) return;
+        openExportDialog(List.of(buildProject(currentFile)));
+    }
+
+    private void doExportAll() {
+        List<File> files = videoListPanelController.getVideos();
+        if (files.isEmpty()) return;
+        List<VideoProject> projects = files.stream()
+            .map(this::buildProject)
+            .collect(Collectors.toList());
+        openExportDialog(projects);
+    }
+
+    private VideoProject buildProject(File file) {
+        VideoProject p = new VideoProject(file);
+        p.setRotation(editorPanelController.getRotation());
+        p.setResolution(editorPanelController.getResolution());
+        p.setLetterboxColor(editorPanelController.getLetterboxColor());
+        p.setWatermarkConfig(editorPanelController.getWatermarkConfig());
+        p.setTrimRange(new TrimRange(
+            timelinePanelController.getStartSeconds(),
+            timelinePanelController.getEndSeconds()));
+        return p;
+    }
+
+    private void openExportDialog(List<VideoProject> projects) {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/ExportDialog.fxml"));
+            Parent root = loader.load();
+            ExportDialogController ctrl = loader.getController();
+            ctrl.setProjects(projects);
+
+            Stage dialog = new Stage();
+            dialog.initModality(Modality.APPLICATION_MODAL);
+            dialog.initOwner((Stage) playerStackPane.getScene().getWindow());
+            dialog.initStyle(StageStyle.UNDECORATED);
+            dialog.setResizable(false);
+
+            Scene scene = new Scene(root);
+            scene.getStylesheets().add(
+                getClass().getResource("/css/dark-theme.css").toExternalForm());
+            dialog.setScene(scene);
+            dialog.setOnShown(e -> centerDialog(dialog));
+            dialog.showAndWait();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void centerDialog(Stage dialog) {
+        Stage owner = (Stage) playerStackPane.getScene().getWindow();
+        dialog.setX(owner.getX() + (owner.getWidth()  - dialog.getWidth())  / 2);
+        dialog.setY(owner.getY() + (owner.getHeight() - dialog.getHeight()) / 2);
+    }
 }
