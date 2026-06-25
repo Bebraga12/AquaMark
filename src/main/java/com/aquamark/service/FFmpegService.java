@@ -1,23 +1,62 @@
 package com.aquamark.service;
 
 import com.aquamark.model.*;
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 public class FFmpegService {
 
-    public void export(VideoProject project, File outputFile, String quality, String format)
-            throws IOException, InterruptedException {
+    private volatile Process currentProcess;
+    private volatile boolean canceled = false;
+
+    public void cancel() {
+        canceled = true;
+        if (currentProcess != null) currentProcess.destroyForcibly();
+    }
+
+    public void export(VideoProject project, File outputFile, String quality, String format,
+                       Consumer<Double> onProgress) throws IOException, InterruptedException {
+        canceled = false;
         List<String> cmd = buildCommand(project, outputFile, quality, format);
-        System.err.println("[FFmpeg] " + String.join(" ", cmd));
         ProcessBuilder pb = new ProcessBuilder(cmd);
-        pb.redirectErrorStream(true);
-        pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
+        pb.redirectErrorStream(true); // stderr → stdout para lermos o progresso
         Process proc = pb.start();
+        currentProcess = proc;
+
+        double start = project.getTrimRange().startSeconds();
+        double end   = project.getTrimRange().endSeconds();
+        double total = (end > start) ? (end - start) : 0;
+
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(proc.getInputStream()))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                if (onProgress != null && line.contains("time=") && total > 0) {
+                    double elapsed = parseTime(line);
+                    if (elapsed >= 0)
+                        onProgress.accept(Math.min(elapsed / total, 1.0));
+                }
+            }
+        } catch (IOException ignored) {}
+
         int exit = proc.waitFor();
-        if (exit != 0) throw new IOException("FFmpeg exited with code " + exit);
+        currentProcess = null;
+        if (!canceled && exit != 0)
+            throw new IOException("FFmpeg saiu com código " + exit);
+    }
+
+    private double parseTime(String line) {
+        int idx = line.indexOf("time=");
+        if (idx < 0) return -1;
+        String t = line.substring(idx + 5).trim().split("\\s+")[0];
+        try {
+            String[] p = t.split(":");
+            return Double.parseDouble(p[0]) * 3600
+                 + Double.parseDouble(p[1]) * 60
+                 + Double.parseDouble(p[2]);
+        } catch (Exception e) { return -1; }
     }
 
     public List<String> buildCommand(VideoProject project, File outputFile,
@@ -30,6 +69,7 @@ public class FFmpegService {
         double start = trim.startSeconds();
         double end   = trim.endSeconds();
 
+        // -ss como opção de INPUT (fast seek) — deve vir ANTES de -i
         if (start > 0.01) {
             cmd.add("-ss");
             cmd.add(String.format("%.3f", start));
@@ -38,11 +78,8 @@ public class FFmpegService {
         cmd.add("-i");
         cmd.add(project.getVideoFile().getAbsolutePath());
 
-        if (end > 0.01 && end > start) {
-            cmd.add("-t");
-            cmd.add(String.format("%.3f", end - start));
-        }
-
+        // Watermark como segundo -i — deve vir logo após o primeiro -i,
+        // NUNCA com -t entre eles (FFmpeg aplicaria o -t ao próximo input)
         WatermarkConfig wm = project.getWatermarkConfig();
         boolean hasWatermark = wm != null && wm.getFile() != null && wm.getFile().exists();
         if (hasWatermark) {
@@ -71,6 +108,13 @@ public class FFmpegService {
             addCodecArgs(cmd, format, quality);
             cmd.add("-c:a");
             cmd.add("copy");
+        }
+
+        // -t como opção de OUTPUT — deve vir APÓS todos os -i e filtros,
+        // imediatamente antes do arquivo de saída
+        if (end > 0.01 && end > start) {
+            cmd.add("-t");
+            cmd.add(String.format("%.3f", end - start));
         }
 
         cmd.add(outputFile.getAbsolutePath());
@@ -134,23 +178,76 @@ public class FFmpegService {
             }
 
             String wmSized  = "wms" + (++n);
-            String mainRef  = "mr"  + n;
             String out      = "v"   + (++n);
 
-            // scale2ref: first input = stream to scale, second = reference
-            // iw/ih in expression refer to the reference (main video) dimensions
-            segments.add(String.format(
-                "[%s][%s]scale2ref='min(iw\\,ih)*%.4f/100':-1[%s][%s]",
-                wmIn, cur, sizePct, wmSized, mainRef));
-            cur = mainRef;
+            // Dimensão de referência = menor lado do vídeo APÓS rotação/resolução.
+            // Calculada em pixels no Java (scale2ref tem semântica de variáveis
+            // imprevisível e distorcia a marca d'água).
+            int refDim = referenceDimension(project);
+            int wmWidth = Math.max(2, (int) Math.round(refDim * sizePct / 100.0));
 
+            // scale com largura absoluta e h=-1 → preserva o aspect ratio da marca d'água
+            segments.add(String.format("[%s]scale=%d:-1[%s]", wmIn, wmWidth, wmSized));
+
+            // x e y como opções nomeadas separadas — permite que a marca d'água
+            // ultrapasse os limites do vídeo (FFmpeg faz o clip automaticamente)
             segments.add(String.format(
-                "[%s][%s]overlay='(main_w-overlay_w)*%.6f:(main_h-overlay_h)*%.6f':format=auto[%s]",
+                "[%s][%s]overlay=x=(main_w-overlay_w)*%.6f:y=(main_h-overlay_h)*%.6f[%s]",
                 cur, wmSized, wmX, wmY, out));
             cur = out;
         }
 
         return new FilterResult(String.join(";", segments), cur);
+    }
+
+    /**
+     * Menor lado (em pixels) do vídeo APÓS rotação e mudança de resolução.
+     * É a base para dimensionar a marca d'água de forma proporcional.
+     */
+    private int referenceDimension(VideoProject project) {
+        // Se há preset de resolução, o vídeo final tem exatamente essas dimensões
+        ResolutionPreset res = project.getResolution();
+        if (res != ResolutionPreset.ORIGINAL) {
+            return Math.min(res.getWidth(), res.getHeight());
+        }
+
+        // Caso ORIGINAL: usa as dimensões reais do vídeo (probe)
+        int[] dim = probeDimensions(project.getVideoFile());
+        int w = dim[0], h = dim[1];
+
+        // Rotação de 90/270 troca largura e altura — mas min() é simétrico,
+        // então não precisa tratar o swap aqui.
+        return Math.max(2, Math.min(w, h));
+    }
+
+    /** Lê largura/altura do vídeo via ffprobe. Fallback 1080x1920 se falhar. */
+    private int[] probeDimensions(File video) {
+        try {
+            Process p = new ProcessBuilder(
+                "ffprobe", "-v", "error",
+                "-select_streams", "v:0",
+                "-show_entries", "stream=width,height",
+                "-of", "csv=p=0:s=x",
+                video.getAbsolutePath()
+            ).redirectErrorStream(true).start();
+
+            String line;
+            try (BufferedReader r = new BufferedReader(
+                    new InputStreamReader(p.getInputStream()))) {
+                line = r.readLine();
+            }
+            p.waitFor();
+
+            if (line != null && line.contains("x")) {
+                String[] parts = line.trim().split("x");
+                int w = Integer.parseInt(parts[0].trim());
+                int h = Integer.parseInt(parts[1].trim());
+                if (w > 0 && h > 0) return new int[]{w, h};
+            }
+        } catch (Exception e) {
+            System.err.println("[AquaMark] probeDimensions falhou: " + e.getMessage());
+        }
+        return new int[]{1080, 1920};
     }
 
     // ── Codec / quality ────────────────────────────────────────────

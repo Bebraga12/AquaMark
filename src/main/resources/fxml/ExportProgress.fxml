@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.*?>
+
+<VBox xmlns="http://javafx.com/javafx/21"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.aquamark.controller.ExportProgressController"
+      styleClass="dialog-root" spacing="0" minWidth="400">
+
+    <HBox styleClass="dialog-header" alignment="CENTER_LEFT">
+        <padding><Insets top="12" right="16" bottom="12" left="16"/></padding>
+        <Label fx:id="lblTitle" text="Exportando..." styleClass="dialog-title"/>
+    </HBox>
+
+    <VBox styleClass="dialog-content" spacing="14">
+        <padding><Insets top="20" right="20" bottom="20" left="20"/></padding>
+
+        <Label fx:id="lblFile" text="" styleClass="field-label" wrapText="true" maxWidth="360"/>
+
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <ProgressBar fx:id="progressBar" progress="0"
+                         HBox.hgrow="ALWAYS" maxWidth="Infinity" prefHeight="12"
+                         styleClass="export-progress"/>
+            <Label fx:id="lblPercent" text="0%" styleClass="value-label" prefWidth="42"/>
+        </HBox>
+
+        <Label fx:id="lblStatus" text="Iniciando..." styleClass="field-label"/>
+    </VBox>
+
+    <HBox styleClass="dialog-footer" spacing="8" alignment="CENTER_RIGHT">
+        <padding><Insets top="10" right="16" bottom="10" left="16"/></padding>
+        <Button fx:id="btnCancel" text="Cancelar" styleClass="btn-secondary"
+                minWidth="90" onAction="#onCancel"/>
+    </HBox>
+</VBox>

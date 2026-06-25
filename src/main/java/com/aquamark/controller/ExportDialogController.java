@@ -1,12 +1,17 @@
 package com.aquamark.controller;
 
 import com.aquamark.model.VideoProject;
-import com.aquamark.service.ExportService;
-import javafx.application.Platform;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.geometry.Rectangle2D;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.stage.DirectoryChooser;
+import javafx.stage.Modality;
+import javafx.stage.Screen;
 import javafx.stage.Stage;
+import javafx.stage.StageStyle;
 import java.io.File;
 import java.util.List;
 
@@ -22,7 +27,6 @@ public class ExportDialogController {
     @FXML private Button            btnExport;
 
     private List<VideoProject> projects;
-    private final ExportService exportService = new ExportService();
 
     @FXML
     public void initialize() {
@@ -55,47 +59,51 @@ public class ExportDialogController {
             showError("Pasta de saída inválida.");
             return;
         }
-        if (projects == null || projects.isEmpty()) {
-            showError("Nenhum vídeo para exportar.");
-            return;
-        }
-
         String quality = selectedQuality();
         String format  = selectedFormat();
 
-        btnExport.setDisable(true);
-        btnExport.setText("Exportando…");
+        Stage dialogStage = (Stage) btnExport.getScene().getWindow();
+        Stage owner       = (Stage) dialogStage.getOwner();
+        dialogStage.close();
 
-        Thread t = new Thread(() -> {
-            try {
-                exportService.exportAll(projects, outputDir, quality, format);
-                Platform.runLater(() -> {
-                    close();
-                    int n = projects.size();
-                    Alert a = new Alert(Alert.AlertType.INFORMATION);
-                    a.setTitle("Exportação concluída");
-                    a.setHeaderText(null);
-                    a.setContentText(n == 1
-                        ? "Vídeo exportado com sucesso!"
-                        : n + " vídeos exportados com sucesso!");
-                    a.showAndWait();
-                });
-            } catch (Exception ex) {
-                Platform.runLater(() -> {
-                    btnExport.setDisable(false);
-                    btnExport.setText("Exportar");
-                    showError("Erro na exportação:\n" + ex.getMessage());
-                });
-            }
-        }, "aquamark-export");
-        t.setDaemon(true);
-        t.start();
+        openProgressWindow(owner, projects, outputDir, quality, format);
     }
 
-    @FXML
-    private void onCancel() { close(); }
+    private void openProgressWindow(Stage owner, List<VideoProject> projects,
+                                    File outputDir, String quality, String format) {
+        try {
+            FXMLLoader loader = new FXMLLoader(
+                getClass().getResource("/fxml/ExportProgress.fxml"));
+            Parent root = loader.load();
+            ExportProgressController ctrl = loader.getController();
 
-    private void close() {
+            Stage stage = new Stage();
+            stage.initModality(Modality.APPLICATION_MODAL);
+            stage.initOwner(owner);
+            stage.initStyle(StageStyle.UNDECORATED);
+            stage.setResizable(false);
+
+            Scene scene = new Scene(root);
+            scene.getStylesheets().add(
+                getClass().getResource("/css/dark-theme.css").toExternalForm());
+            stage.setScene(scene);
+            stage.setOnShown(e -> {
+                stage.sizeToScene();
+                double x = owner.getX() + (owner.getWidth()  - stage.getWidth())  / 2;
+                double y = owner.getY() + (owner.getHeight() - stage.getHeight()) / 2;
+                // Garante que o dialog fica dentro da tela
+                Rectangle2D screen = Screen.getPrimary().getVisualBounds();
+                stage.setX(Math.max(0, Math.min(x, screen.getMaxX() - stage.getWidth())));
+                stage.setY(Math.max(0, Math.min(y, screen.getMaxY() - stage.getHeight())));
+                ctrl.startExport(projects, outputDir, quality, format);
+            });
+            stage.show();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @FXML private void onCancel() {
         ((Stage) btnExport.getScene().getWindow()).close();
     }
 

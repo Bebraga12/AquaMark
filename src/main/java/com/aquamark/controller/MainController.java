@@ -1,5 +1,6 @@
 package com.aquamark.controller;
 
+import com.aquamark.model.ResolutionPreset;
 import com.aquamark.model.TrimRange;
 import com.aquamark.model.VideoProject;
 import com.aquamark.service.PreviewService;
@@ -81,8 +82,8 @@ public class MainController {
     private Thread               readerThread      = null;
     private javafx.animation.AnimationTimer displayTimer = null;
 
-    // Processo ffplay para áudio
-    private Process audioPipeProcess = null;
+    private Process     audioPipeProcess = null;
+    private String      currentVfFilter  = null; // filtro de rotação/resolução para o pipe
 
     private MediaPlayer mediaPlayer;
     private boolean     isPlaying    = false;
@@ -98,6 +99,7 @@ public class MainController {
         editorPanelController.setOnExport(this::doExportCurrent);
         editorPanelController.setOnExportAll(this::doExportAll);
         editorPanelController.setOnWatermarkChanged(this::updateWatermarkOverlay);
+        editorPanelController.setOnPreviewParamsChanged(this::onPreviewParamsChanged);
         timelinePanelController.setOnTrimChanged(this::updateSeekTrim);
 
         // MediaView e previewImageView preenchem o StackPane preservando proporção
@@ -140,11 +142,6 @@ public class MainController {
         });
         sliderVolume.valueProperty().addListener((obs, o, n) -> {
             if (mediaPlayer != null) mediaPlayer.setVolume(n.doubleValue());
-        });
-        // Ao soltar o slider de volume, reinicia o áudio com o novo valor
-        sliderVolume.setOnMouseReleased(e -> {
-            if (ffmpegPreviewMode && isPlaying && !btnMute.isSelected())
-                startAudioPipe(ffmpegPosition);
         });
 
         // Fullscreen handling
@@ -289,6 +286,59 @@ public class MainController {
         wmOverlay.setVisible(true);
     }
 
+    // ── Preview: rotação e resolução ─────────────────────────
+
+    /** Constrói o filtro -vf para o pipe de preview com base nas seleções atuais do editor. */
+    private String buildVfFilter() {
+        StringBuilder vf = new StringBuilder();
+
+        // Rotação
+        double rot = editorPanelController.getRotation();
+        if (Math.abs(rot - 90) < 0.5)                    vf.append("transpose=1");
+        else if (Math.abs(rot + 90) < 0.5)               vf.append("transpose=2");
+        else if (Math.abs(Math.abs(rot) - 180) < 0.5)    vf.append("transpose=1,transpose=1");
+        else if (Math.abs(rot) > 0.5)
+            vf.append(String.format("rotate=%.4f*PI/180:fillcolor=black", rot));
+
+        // Resolução
+        ResolutionPreset preset = editorPanelController.getResolution();
+        if (preset != ResolutionPreset.ORIGINAL) {
+            int w = preset.getWidth(), h = preset.getHeight();
+            String color = editorPanelController.getLetterboxColor().replace("#", "");
+            String res = String.format(
+                "scale=%d:%d:force_original_aspect_ratio=decrease,pad=%d:%d:(ow-iw)/2:(oh-ih)/2:color=0x%s",
+                w, h, w, h, color);
+            if (vf.length() > 0) vf.append(",");
+            vf.append(res);
+        }
+
+        return vf.length() > 0 ? vf.toString() : null;
+    }
+
+    /** Chamado quando rotação ou resolução muda no editor. */
+    private void onPreviewParamsChanged() {
+        if (!ffmpegPreviewMode || currentFile == null) return;
+        currentVfFilter = buildVfFilter();
+        if (isPlaying) {
+            // Reinicia o pipe com o novo filtro mantendo a posição atual
+            boolean wasPlaying = isPlaying;
+            ffmpegPause();
+            if (wasPlaying) ffmpegPlay();
+        } else {
+            // Só atualiza o frame estático parado
+            final double pos = ffmpegPosition;
+            final String filter = currentVfFilter;
+            Thread t = new Thread(() -> {
+                try {
+                    Image img = previewService.extractFrame(currentFile, pos, filter);
+                    Platform.runLater(() -> { if (img != null) previewImageView.setImage(img); });
+                } catch (Exception ignored) {}
+            }, "preview-params-frame");
+            t.setDaemon(true);
+            t.start();
+        }
+    }
+
     // ── Seek trim highlight ───────────────────────────────────
 
     private void updateSeekTrim() {
@@ -366,9 +416,10 @@ public class MainController {
 
         Thread init = new Thread(() -> {
             try {
-                double dur = previewService.getDuration(file);
-                double fps = previewService.getFps(file);
-                Image  frm = previewService.extractFrame(file, 0);
+                double dur  = previewService.getDuration(file);
+                double fps  = previewService.getFps(file);
+                int[]  size = previewService.getVideoSize(file);
+                Image  frm  = previewService.extractFrame(file, 0, null);
                 Platform.runLater(() -> {
                     ffmpegDuration = dur;
                     ffmpegFps      = fps > 0 ? fps : 30;
@@ -376,6 +427,7 @@ public class MainController {
                     lblTotalTime.setText(TimeFormatter.format(dur));
                     timelinePanelController.setTotalDuration(dur);
                     updateSeekTrim();
+                    if (size != null) editorPanelController.setOriginalResolution(size[0], size[1]);
                     if (frm != null) previewImageView.setImage(frm);
                 });
             } catch (Exception e) {
@@ -387,25 +439,11 @@ public class MainController {
     }
 
     private void stopPipe() {
-        if (displayTimer != null) { displayTimer.stop(); displayTimer = null; }
-        if (readerThread != null) { readerThread.interrupt(); readerThread = null; }
-        if (pipeProcess  != null) { pipeProcess.destroyForcibly(); pipeProcess = null; }
-        latestFrame = null;
-        stopAudioPipe();
-    }
-
-    private void stopAudioPipe() {
+        if (displayTimer     != null) { displayTimer.stop(); displayTimer = null; }
+        if (readerThread     != null) { readerThread.interrupt(); readerThread = null; }
+        if (pipeProcess      != null) { pipeProcess.destroyForcibly(); pipeProcess = null; }
         if (audioPipeProcess != null) { audioPipeProcess.destroyForcibly(); audioPipeProcess = null; }
-    }
-
-    private void startAudioPipe(double startTime) {
-        stopAudioPipe();
-        try {
-            int vol = btnMute.isSelected() ? 0 : (int) Math.round(sliderVolume.getValue() * 100);
-            audioPipeProcess = previewService.startAudioPlayer(currentFile, startTime, vol);
-        } catch (Exception e) {
-            System.err.println("[AquaMark] Áudio (ffplay) falhou: " + e.getMessage());
-        }
+        latestFrame = null;
     }
 
     private void ffmpegPlay() {
@@ -425,7 +463,7 @@ public class MainController {
         long[] frameIdx = {0};
 
         try {
-            pipeProcess = previewService.startPipe(currentFile, pipeStartTime);
+            pipeProcess = previewService.startPipe(currentFile, pipeStartTime, currentVfFilter);
         } catch (Exception e) {
             System.err.println("[AquaMark] Erro ao iniciar pipe: " + e.getMessage());
             return;
@@ -487,7 +525,11 @@ public class MainController {
             }
         };
         displayTimer.start();
-        startAudioPipe(pipeStartTime);
+        try {
+            audioPipeProcess = previewService.startAudioPlayer(currentFile, pipeStartTime);
+        } catch (Exception e) {
+            System.err.println("[AquaMark] Áudio falhou: " + e.getMessage());
+        }
         isPlaying = true;
         btnPlayPause.setText("⏸");
     }
@@ -506,7 +548,7 @@ public class MainController {
         // Mostra frame estático no ponto do seek
         Thread t = new Thread(() -> {
             try {
-                Image img = previewService.extractFrame(currentFile, seconds);
+                Image img = previewService.extractFrame(currentFile, seconds, currentVfFilter);
                 Platform.runLater(() -> { if (img != null) previewImageView.setImage(img); });
             } catch (Exception ignored) {}
         }, "seek-frame");
@@ -548,10 +590,6 @@ public class MainController {
         boolean muted = btnMute.isSelected();
         btnMute.setText(muted ? "✕" : "♪");
         if (mediaPlayer != null) mediaPlayer.setMute(muted);
-        if (ffmpegPreviewMode && isPlaying) {
-            if (muted) stopAudioPipe();
-            else       startAudioPipe(ffmpegPosition);
-        }
     }
 
     private void doExportCurrent() {

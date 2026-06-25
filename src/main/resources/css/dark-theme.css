@@ -149,11 +149,11 @@
 }
 
 .player-container {
-  -fx-background-color: #111111;
+  -fx-background-color: #1e1e1e;
 }
 
 .player-stack {
-  -fx-background-color: #000000;
+  -fx-background-color: #1e1e1e;
 }
 
 .empty-state {
@@ -606,4 +606,16 @@
 .slider:focused .thumb,
 .list-view:focused {
   -fx-effect: dropshadow(gaussian, rgba(59, 142, 234, 0.5), 4, 0, 0, 0);
+}
+
+.export-progress {
+  -fx-accent: #3b8eea;
+  -fx-background-color: #3a3a3a;
+  -fx-background-radius: 3;
+}
+
+.export-progress > .bar {
+  -fx-background-radius: 3;
+  -fx-background-insets: 0;
+  -fx-background-color: #3b8eea;
 }

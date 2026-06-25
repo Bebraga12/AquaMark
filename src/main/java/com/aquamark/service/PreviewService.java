@@ -3,6 +3,8 @@ package com.aquamark.service;
 import javafx.scene.image.Image;
 import java.io.*;
 import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.List;
 
 public class PreviewService {
 
@@ -42,46 +44,55 @@ public class PreviewService {
         return out.isEmpty() ? 30.0 : Double.parseDouble(out);
     }
 
+    /** Largura e altura do stream de vídeo em pixels — int[]{w, h}. */
+    public int[] getVideoSize(File file) throws Exception {
+        Process p = ffprobe("-select_streams", "v:0",
+                            "-show_entries", "stream=width,height",
+                            "-of", "csv=p=0",
+                            file.getAbsolutePath());
+        String out = readStdout(p).trim().split("\n")[0].trim();
+        p.waitFor();
+        String[] parts = out.split(",");
+        return new int[]{ Integer.parseInt(parts[0]), Integer.parseInt(parts[1]) };
+    }
+
     /** Frame estático em um instante — usado para seek e primeiro frame. */
-    public Image extractFrame(File file, double seconds) throws Exception {
+    public Image extractFrame(File file, double seconds, String vfFilter) throws Exception {
         File temp = new File(TEMP_DIR, "seek_frame.jpg");
-        new ProcessBuilder(
+        List<String> cmd = new ArrayList<>(List.of(
             "ffmpeg", "-y", "-loglevel", "quiet",
             "-ss", String.format("%.3f", Math.max(0, seconds)),
-            "-i", file.getAbsolutePath(),
-            "-vframes", "1", "-q:v", "3",
-            temp.getAbsolutePath())
-            .redirectErrorStream(true).start().waitFor();
+            "-i", file.getAbsolutePath()));
+        if (vfFilter != null && !vfFilter.isBlank()) { cmd.add("-vf"); cmd.add(vfFilter); }
+        cmd.addAll(List.of("-vframes", "1", "-q:v", "3", temp.getAbsolutePath()));
+        new ProcessBuilder(cmd).redirectErrorStream(true).start().waitFor();
         return (temp.exists() && temp.length() > 0)
             ? new Image(temp.toURI().toString()) : null;
     }
 
     /**
-     * Inicia um pipe MJPEG: FFmpeg emite frames JPEG pelo stdout a partir de
-     * startTime. O caller é responsável por fechar o processo.
+     * Pipe MJPEG com filtro de vídeo opcional (rotação, resolução).
+     * O caller é responsável por fechar o processo.
      */
-    public Process startPipe(File file, double startTime) throws IOException {
-        ProcessBuilder pb = new ProcessBuilder(
+    public Process startPipe(File file, double startTime, String vfFilter) throws IOException {
+        List<String> cmd = new ArrayList<>(List.of(
             "ffmpeg", "-loglevel", "quiet",
-            "-re",                                                    // lê na taxa nativa do vídeo
+            "-re",
             "-ss", String.format("%.3f", Math.max(0, startTime)),
-            "-i", file.getAbsolutePath(),
-            "-f", "image2pipe", "-vcodec", "mjpeg", "-q:v", "4",
-            "pipe:1");
+            "-i", file.getAbsolutePath()));
+        if (vfFilter != null && !vfFilter.isBlank()) { cmd.add("-vf"); cmd.add(vfFilter); }
+        cmd.addAll(List.of("-f", "image2pipe", "-vcodec", "mjpeg", "-q:v", "4", "pipe:1"));
+        ProcessBuilder pb = new ProcessBuilder(cmd);
         pb.redirectError(ProcessBuilder.Redirect.DISCARD);
         return pb.start();
     }
 
-    /**
-     * Inicia ffplay em modo headless para reprodução de áudio.
-     * volume: 0–100 (mesma escala do ffplay -volume).
-     */
-    public Process startAudioPlayer(File file, double startTime, int volume) throws IOException {
+    /** Inicia ffplay headless para reprodução de áudio sincronizado com o preview. */
+    public Process startAudioPlayer(File file, double startTime) throws IOException {
         ProcessBuilder pb = new ProcessBuilder(
             "ffplay", "-nodisp", "-loglevel", "quiet",
             "-ss", String.format("%.3f", Math.max(0, startTime)),
-            "-i", file.getAbsolutePath(),
-            "-volume", String.valueOf(Math.max(0, Math.min(100, volume))));
+            "-i", file.getAbsolutePath());
         pb.redirectError(ProcessBuilder.Redirect.DISCARD);
         pb.redirectOutput(ProcessBuilder.Redirect.DISCARD);
         return pb.start();

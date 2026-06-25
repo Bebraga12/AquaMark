@@ -47,6 +47,7 @@ public class EditorController {
     private Runnable onExportCallback;
     private Runnable onExportAllCallback;
     private Runnable onWatermarkChanged;
+    private Runnable onPreviewParamsChanged;
 
     private double wmX = 0.95;
     private double wmY = 0.05;
@@ -59,6 +60,7 @@ public class EditorController {
     public void initialize() {
         sliderRotation.valueProperty().addListener((obs, o, n) ->
             lblRotationValue.setText(String.format("%.0f°", n.doubleValue())));
+        sliderRotation.setOnMouseReleased(e -> notifyPreviewParamsChanged());
 
         sliderWatermarkSize.valueProperty().addListener((obs, o, n) -> {
             lblWatermarkSize.setText(String.format("%.0f%%", n.doubleValue()));
@@ -79,7 +81,10 @@ public class EditorController {
             else if (n == btnResSquare)     previewRatio = 1.0;
             else                            previewRatio = 16.0 / 9.0;
             rebuildPreview();
+            notifyPreviewParamsChanged();
         });
+
+        colorLetterbox.valueProperty().addListener((obs, o, n) -> notifyPreviewParamsChanged());
 
         watermarkPositionPane.widthProperty().addListener((o, a, b) -> rebuildPreview());
         watermarkPositionPane.heightProperty().addListener((o, a, b) -> rebuildPreview());
@@ -159,9 +164,9 @@ public class EditorController {
 
     // ── Rotation shortcuts ─────────────────────────────────────────
 
-    @FXML private void onRotateMinus90() { shiftRotation(-90); }
-    @FXML private void onRotatePlus90()  { shiftRotation(90);  }
-    @FXML private void onState0()        { sliderRotation.setValue(0); }
+    @FXML private void onRotateMinus90() { shiftRotation(-90); notifyPreviewParamsChanged(); }
+    @FXML private void onRotatePlus90()  { shiftRotation(90);  notifyPreviewParamsChanged(); }
+    @FXML private void onState0()        { sliderRotation.setValue(0); notifyPreviewParamsChanged(); }
 
     private void shiftRotation(double delta) {
         double v = sliderRotation.getValue() + delta;
@@ -190,9 +195,15 @@ public class EditorController {
     @FXML private void onExport()    { if (onExportCallback    != null) onExportCallback.run();    }
     @FXML private void onExportAll() { if (onExportAllCallback != null) onExportAllCallback.run(); }
 
-    public void setOnExport(Runnable cb)          { this.onExportCallback    = cb; }
-    public void setOnExportAll(Runnable cb)       { this.onExportAllCallback = cb; }
-    public void setOnWatermarkChanged(Runnable cb){ this.onWatermarkChanged  = cb; }
+    public void setOnExport(Runnable cb)             { this.onExportCallback       = cb; }
+    public void setOnExportAll(Runnable cb)          { this.onExportAllCallback    = cb; }
+    public void setOnWatermarkChanged(Runnable cb)   { this.onWatermarkChanged     = cb; }
+    public void setOnPreviewParamsChanged(Runnable cb){ this.onPreviewParamsChanged = cb; }
+
+    /** Atualiza o texto do botão Original com a resolução detectada. */
+    public void setOriginalResolution(int w, int h) {
+        btnResOriginal.setText("Original (" + w + "×" + h + ")");
+    }
 
     // ── Getters ────────────────────────────────────────────────────
 
@@ -233,5 +244,9 @@ public class EditorController {
 
     private void notifyWatermarkChanged() {
         if (onWatermarkChanged != null) onWatermarkChanged.run();
+    }
+
+    private void notifyPreviewParamsChanged() {
+        if (onPreviewParamsChanged != null) onPreviewParamsChanged.run();
     }
 }

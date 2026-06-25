@@ -5,7 +5,7 @@
 // ── Superfícies (escuro → claro) ─────────────────────────────
 $black:                #000000;
 $white:                #ffffff;
-$bg-deep:              #111111;  // player container
+$bg-deep:              #1e1e1e;  // player container
 $bg-deeper:            #1a1a1a;  // controls bar, trim track, wm-position
 $bg-main:              #1e1e1e;  // fundo principal
 $bg-timeline:          #232323;  // timeline panel
@@ -206,7 +206,7 @@ $mono: "Consolas", "Courier New", monospace;
 // ── Center / Player ───────────────────────────────────────────
 .center-pane      { -fx-background-color: $bg-main; }
 .player-container { -fx-background-color: $bg-deep; }
-.player-stack     { -fx-background-color: $black; }
+.player-stack     { -fx-background-color: $bg-deep; }
 .empty-state      { -fx-background-color: transparent; }
 .media-view       { -fx-background-color: transparent; }
 
@@ -613,4 +613,15 @@ $mono: "Consolas", "Courier New", monospace;
 .slider:focused .thumb,
 .list-view:focused {
     -fx-effect: dropshadow(gaussian, $accent-focus, 4, 0, 0, 0);
+}
+
+.export-progress {
+    -fx-accent: $accent;
+    -fx-background-color: $track-bg;
+    -fx-background-radius: 3;
+}
+.export-progress > .bar {
+    -fx-background-radius: 3;
+    -fx-background-insets: 0;
+    -fx-background-color: $accent;
 }
