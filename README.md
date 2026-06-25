@@ -2,7 +2,7 @@
 
 > Desktop video editor focused on watermarking — add image or GIF overlays, trim, rotate, adjust resolution, and batch-export via FFmpeg.
 
-AquaMark is a lightweight, open-source desktop application built with Java and JavaFX. It provides a professional, editor-style interface (inspired by Sony Vegas / Adobe Photoshop) for applying watermarks to one or multiple videos and exporting them in a single pass.
+AquaMark is a lightweight, open-source desktop application built with Java and JavaFX. It provides a professional, editor-style interface for applying watermarks to one or multiple videos and exporting them in a single pass.
 
 ---
 
@@ -10,10 +10,10 @@ AquaMark is a lightweight, open-source desktop application built with Java and J
 
 - **Watermark overlay** — supports static images and animated GIFs, with configurable position, size (%), and opacity (%)
 - **Trim** — set a start/end cut point per video using a visual timeline
-- **Rotation** — rotate the video output (90°, 180°, 270°, or free angle)
+- **Rotation** — rotate the video output
 - **Resolution presets** — export as Original, 16:9, 9:16, or 1:1 with automatic letterbox (configurable color)
 - **Batch export** — process the entire video list in one click
-- **Dark, professional UI** — neutral gray palette + blue accent, no consumer-style chrome
+- **Dark UI** — neutral gray palette + blue accent
 
 ---
 
@@ -50,7 +50,7 @@ brew install ffmpeg
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/your-username/aqua-mark.git
+git clone https://github.com/Bebraga12/AquaMark
 cd aqua-mark
 ```
 
@@ -87,11 +87,11 @@ src/main/java/com/aquamark/
 ├── model/                        # Plain data objects — no JavaFX imports
 │   ├── VideoProject.java
 │   ├── WatermarkConfig.java
-│   ├── ResolutionPreset.java     # Enum: ORIGINAL | 16:9 | 9:16 | 1:1
-│   └── TrimRange.java            # Record: startSeconds, endSeconds
+│   ├── ResolutionPreset.java     
+│   └── TrimRange.java            
 ├── service/                      # Business logic — no JavaFX imports
-│   ├── FFmpegService.java        # Builds and runs FFmpeg commands
-│   ├── ExportService.java        # Orchestrates single / batch export
+│   ├── FFmpegService.java        
+│   ├── ExportService.java       
 │   └── PreviewService.java
 └── util/
     └── TimeFormatter.java        # seconds → "mm:ss"
@@ -110,7 +110,8 @@ The architecture follows a strict MVC split:
 
 ---
 
-## Tech stack
+## Tech 
+
 
 | Layer | Technology |
 |---|---|
@@ -146,4 +147,4 @@ npx sass src/main/resources/css/dark-theme.scss src/main/resources/css/dark-them
 
 ## License
 
-[MIT](LICENSE)
+[GNU General Public License v3.0](LICENSE) — you are free to use, modify, and distribute this software, but any derivative work must also be released under the GPL v3 with its source code available.
