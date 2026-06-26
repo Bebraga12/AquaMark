@@ -3,6 +3,7 @@ package com.aquamark.controller;
 import com.aquamark.model.ResolutionPreset;
 import com.aquamark.model.TrimRange;
 import com.aquamark.model.VideoProject;
+import com.aquamark.model.WatermarkConfig;
 import com.aquamark.service.PreviewService;
 import com.aquamark.util.TimeFormatter;
 import javafx.animation.AnimationTimer;
@@ -33,7 +34,9 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.InputStream;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public class MainController {
@@ -44,7 +47,6 @@ public class MainController {
 
     @FXML private SplitPane  mainSplit;
 
-    // Player
     @FXML private StackPane    playerStackPane;
     @FXML private VBox         paneEmpty;
     @FXML private MediaView    mediaView;
@@ -55,21 +57,18 @@ public class MainController {
     @FXML private ToggleButton btnMute;
     @FXML private Slider       sliderVolume;
 
-    // Video name bar
     @FXML private HBox  videoNameBar;
     @FXML private Label lblVideoName;
 
-    // Watermark overlay
     @FXML private Pane watermarkOverlayPane;
     private ImageView  wmOverlay;
     private File       cachedWmFile;
     private Image      cachedWmImage;
 
-    // Seek trim overlay
     @FXML private Pane      seekTrimPane;
     private Rectangle       seekTrimRect;
 
-    // FFmpeg pipe preview (fallback quando MediaPlayer não funciona)
+    // FFmpeg pipe preview
     @FXML private ImageView      previewImageView;
     private final PreviewService previewService    = new PreviewService();
     private boolean              ffmpegPreviewMode = false;
@@ -93,6 +92,14 @@ public class MainController {
 
     private double[] savedDividers = null;
 
+    // Estado por vídeo: cada arquivo guarda seu corte, rotação e (opcionalmente) posição da marca.
+    private final Map<File, VideoProject> projects = new LinkedHashMap<>();
+    // Marca d'água global — compartilhada por todos os vídeos sem "posição individual".
+    private double gWmX = 0.95;
+    private double gWmY = 0.05;
+    private double gWmSize = 20;
+    private double gWmOpacity = 100;
+
     @FXML
     public void initialize() {
         videoListPanelController.setOnVideoSelected(this::loadVideo);
@@ -100,9 +107,9 @@ public class MainController {
         editorPanelController.setOnExportAll(this::doExportAll);
         editorPanelController.setOnWatermarkChanged(this::updateWatermarkOverlay);
         editorPanelController.setOnPreviewParamsChanged(this::onPreviewParamsChanged);
+        editorPanelController.setOnWmPositionModeChanged(this::onWmPositionModeChanged);
         timelinePanelController.setOnTrimChanged(this::updateSeekTrim);
 
-        // MediaView e previewImageView preenchem o StackPane preservando proporção
         playerStackPane.widthProperty().addListener((obs, o, n) -> {
             mediaView.setFitWidth(n.doubleValue());
             previewImageView.setFitWidth(n.doubleValue());
@@ -114,7 +121,6 @@ public class MainController {
         mediaView.setPreserveRatio(true);
         previewImageView.setPreserveRatio(true);
 
-        // Watermark overlay
         wmOverlay = new ImageView();
         wmOverlay.setPreserveRatio(true);
         wmOverlay.setMouseTransparent(true);
@@ -123,7 +129,6 @@ public class MainController {
         watermarkOverlayPane.widthProperty().addListener((o, a, b)  -> updateWatermarkOverlay());
         watermarkOverlayPane.heightProperty().addListener((o, a, b) -> updateWatermarkOverlay());
 
-        // Seek trim highlight
         seekTrimRect = new Rectangle();
         seekTrimRect.setFill(Color.web("#3b8eea55"));
         seekTrimRect.setMouseTransparent(true);
@@ -132,7 +137,6 @@ public class MainController {
         seekTrimPane.widthProperty().addListener((o, a, b)  -> updateSeekTrim());
         seekTrimPane.heightProperty().addListener((o, a, b) -> updateSeekTrim());
 
-        // Seek / volume
         sliderSeek.setOnMousePressed(e -> seekDragging = true);
         sliderSeek.setOnMouseReleased(e -> {
             seekDragging = false;
@@ -144,7 +148,6 @@ public class MainController {
             if (mediaPlayer != null) mediaPlayer.setVolume(n.doubleValue());
         });
 
-        // Fullscreen handling
         playerStackPane.sceneProperty().addListener((obs, oldScene, newScene) -> {
             if (newScene == null) return;
             newScene.windowProperty().addListener((wObs, oldWin, newWin) -> {
@@ -169,6 +172,9 @@ public class MainController {
     }
 
     private void loadVideo(File file) {
+        // Salva o estado do vídeo que estava aberto antes de trocar
+        if (currentFile != null && !currentFile.equals(file)) saveCurrentState();
+
         // Para e descarta player/preview anterior
         if (mediaPlayer != null) {
             mediaPlayer.stop();
@@ -183,17 +189,19 @@ public class MainController {
         isPlaying = false;
         btnPlayPause.setText("▶");
 
-        // Oculta o empty-state imediatamente — independente de codec/GStreamer
         paneEmpty.setVisible(false);
         paneEmpty.setManaged(false);
 
-        // Atualiza nome do vídeo na barra superior
         lblVideoName.setText(file.getName());
         videoNameBar.setVisible(true);
         videoNameBar.setManaged(true);
 
         videoLoaded = true;
         currentFile = file;
+
+        // Restaura rotação e posição da marca salvas para este vídeo
+        // (o corte é restaurado depois, quando a duração for conhecida)
+        restoreEditorState(projects.computeIfAbsent(file, VideoProject::new));
 
         try {
             Media media = new Media(file.toURI().toString());
@@ -205,18 +213,21 @@ public class MainController {
                 sliderSeek.setMax(total.toSeconds());
                 lblTotalTime.setText(TimeFormatter.format(total.toSeconds()));
                 timelinePanelController.setTotalDuration(total.toSeconds());
+                restoreTrim(file);
                 updateSeekTrim();
                 applyTrimToMediaPlayer();
             });
 
-            // Quando chega ao fim do corte, volta ao início do corte
             mediaPlayer.setOnStopped(() -> {
                 double trimStart = timelinePanelController.getStartSeconds();
                 mediaPlayer.seek(Duration.seconds(trimStart));
             });
 
-            mediaPlayer.setOnError(() ->
-                System.err.println("[AquaMark] Erro de mídia: " + mediaPlayer.getError()));
+            mediaPlayer.setOnError(() -> {
+                // Erro assíncrono de codec: descarta o player e usa o preview FFmpeg
+                if (mediaPlayer != null) { mediaPlayer.dispose(); mediaPlayer = null; }
+                startFFmpegPreview(file);
+            });
 
             mediaPlayer.currentTimeProperty().addListener((obs, o, n) -> {
                 if (!seekDragging) sliderSeek.setValue(n.toSeconds());
@@ -231,8 +242,8 @@ public class MainController {
             mediaPlayer.setVolume(sliderVolume.getValue());
             mediaPlayer.play();
         } catch (Exception e) {
-            // JavaFX Media não suporta o codec — usa preview via FFmpeg
-            System.err.println("[AquaMark] MediaPlayer falhou, usando preview FFmpeg: " + e.getMessage());
+            // Esperado: o JavaFX Media não decodifica todos os codecs.
+            // Cai para o preview via FFmpeg, que cobre os demais formatos.
             startFFmpegPreview(file);
         }
     }
@@ -265,7 +276,6 @@ public class MainController {
         wmOverlay.setFitHeight(size);
         wmOverlay.setOpacity(opacity);
 
-        // Calcula o tamanho real renderizado respeitando o aspect ratio da imagem
         double imgW = cachedWmImage.getWidth();
         double imgH = cachedWmImage.getHeight();
         double renderedW, renderedH;
@@ -288,7 +298,6 @@ public class MainController {
 
     // ── Preview: rotação e resolução ─────────────────────────
 
-    /** Constrói o filtro -vf para o pipe de preview com base nas seleções atuais do editor. */
     private String buildVfFilter() {
         StringBuilder vf = new StringBuilder();
 
@@ -297,8 +306,11 @@ public class MainController {
         if (Math.abs(rot - 90) < 0.5)                    vf.append("transpose=1");
         else if (Math.abs(rot + 90) < 0.5)               vf.append("transpose=2");
         else if (Math.abs(Math.abs(rot) - 180) < 0.5)    vf.append("transpose=1,transpose=1");
-        else if (Math.abs(rot) > 0.5)
-            vf.append(String.format("rotate=%.4f*PI/180:fillcolor=black", rot));
+        else if (Math.abs(rot) > 0.5) {
+            // ow/oh = rotw/roth: expande o frame para conter o vídeo girado (sem cortar)
+            String a = String.format(java.util.Locale.US, "%.5f*PI/180", rot);
+            vf.append(String.format("rotate=%s:ow=rotw(%s):oh=roth(%s):fillcolor=black", a, a, a));
+        }
 
         // Resolução
         ResolutionPreset preset = editorPanelController.getResolution();
@@ -426,6 +438,7 @@ public class MainController {
                     sliderSeek.setMax(dur);
                     lblTotalTime.setText(TimeFormatter.format(dur));
                     timelinePanelController.setTotalDuration(dur);
+                    restoreTrim(file);
                     updateSeekTrim();
                     if (size != null) editorPanelController.setOriginalResolution(size[0], size[1]);
                     if (frm != null) previewImageView.setImage(frm);
@@ -594,28 +607,102 @@ public class MainController {
 
     private void doExportCurrent() {
         if (currentFile == null) return;
+        saveCurrentState();
         openExportDialog(List.of(buildProject(currentFile)));
     }
 
     private void doExportAll() {
         List<File> files = videoListPanelController.getVideos();
         if (files.isEmpty()) return;
+        saveCurrentState();
         List<VideoProject> projects = files.stream()
             .map(this::buildProject)
             .collect(Collectors.toList());
         openExportDialog(projects);
     }
 
-    private VideoProject buildProject(File file) {
-        VideoProject p = new VideoProject(file);
+    // ── Estado por vídeo: salvar / restaurar ──────────────────
+
+    /** Grava a UI atual (corte, rotação, posição da marca) no projeto do vídeo aberto. */
+    private void saveCurrentState() {
+        if (currentFile == null) return;
+        VideoProject p = projects.computeIfAbsent(currentFile, VideoProject::new);
         p.setRotation(editorPanelController.getRotation());
-        p.setResolution(editorPanelController.getResolution());
-        p.setLetterboxColor(editorPanelController.getLetterboxColor());
-        p.setWatermarkConfig(editorPanelController.getWatermarkConfig());
         p.setTrimRange(new TrimRange(
             timelinePanelController.getStartSeconds(),
             timelinePanelController.getEndSeconds()));
+
+        boolean indiv = editorPanelController.isWatermarkPositionIndividual();
+        p.setWatermarkPositionIndividual(indiv);
+
+        double x    = editorPanelController.getWmX();
+        double y    = editorPanelController.getWmY();
+        double size = editorPanelController.getWatermarkSizePercent();
+        double op   = editorPanelController.getWatermarkOpacityPercent();
+
+        if (!indiv) {
+            // Vídeo sem marca individual atualiza os valores globais compartilhados
+            gWmX = x; gWmY = y; gWmSize = size; gWmOpacity = op;
+        }
+        p.setWatermarkX(x);
+        p.setWatermarkY(y);
+        p.setWatermarkSize(size);
+        p.setWatermarkOpacity(op);
+    }
+
+    /** Aplica rotação e marca d'água salvas (corte é tratado em restoreTrim). */
+    private void restoreEditorState(VideoProject p) {
+        boolean indiv = p.isWatermarkPositionIndividual();
+        double x    = indiv ? p.getWatermarkX()       : gWmX;
+        double y    = indiv ? p.getWatermarkY()       : gWmY;
+        double size = indiv ? p.getWatermarkSize()    : gWmSize;
+        double op   = indiv ? p.getWatermarkOpacity() : gWmOpacity;
+        editorPanelController.applyState(p.getRotation(), indiv, x, y, size, op);
+        updateWatermarkOverlay();
+    }
+
+    /** Restaura o corte do vídeo depois que a duração já é conhecida. */
+    private void restoreTrim(File file) {
+        VideoProject p = projects.computeIfAbsent(file, VideoProject::new);
+        TrimRange t = p.getTrimRange();
+        timelinePanelController.setTrim(t.startSeconds(), t.endSeconds());
+    }
+
+    /** Checkbox de posição individual mudou no vídeo atual. */
+    private void onWmPositionModeChanged() {
+        if (currentFile == null) return;
+        VideoProject p = projects.computeIfAbsent(currentFile, VideoProject::new);
+        boolean indiv = editorPanelController.isWatermarkPositionIndividual();
+        p.setWatermarkPositionIndividual(indiv);
+        if (!indiv) {
+            // Voltou ao modo compartilhado: marca pula para os valores globais
+            editorPanelController.setWatermarkAppearance(gWmX, gWmY, gWmSize, gWmOpacity);
+            updateWatermarkOverlay();
+        }
+    }
+
+    private VideoProject buildProject(File file) {
+        VideoProject p = projects.computeIfAbsent(file, VideoProject::new);
+        // Resolução, letterbox e arquivo/tamanho/opacidade da marca são globais (UI atual)
+        p.setResolution(editorPanelController.getResolution());
+        p.setLetterboxColor(editorPanelController.getLetterboxColor());
+        p.setWatermarkConfig(buildWatermarkConfigFor(p));
+        // Rotação e corte já estão salvos no projeto (via saveCurrentState ao trocar de vídeo)
         return p;
+    }
+
+    /** Monta a marca d'água global, usando a posição individual do vídeo ou a global. */
+    private WatermarkConfig buildWatermarkConfigFor(VideoProject p) {
+        File wmFile = editorPanelController.getWatermarkFile();
+        if (wmFile == null) return null;
+        boolean indiv = p.isWatermarkPositionIndividual();
+        WatermarkConfig cfg = new WatermarkConfig();
+        cfg.setFile(wmFile);
+        cfg.setSizePercent((int) (indiv ? p.getWatermarkSize()    : gWmSize));
+        cfg.setOpacityPercent((int) (indiv ? p.getWatermarkOpacity() : gWmOpacity));
+        cfg.setPositionX(indiv ? p.getWatermarkX() : gWmX);
+        cfg.setPositionY(indiv ? p.getWatermarkY() : gWmY);
+        return cfg;
     }
 
     private void openExportDialog(List<VideoProject> projects) {

@@ -21,7 +21,7 @@ public class FFmpegService {
         canceled = false;
         List<String> cmd = buildCommand(project, outputFile, quality, format);
         ProcessBuilder pb = new ProcessBuilder(cmd);
-        pb.redirectErrorStream(true); // stderr → stdout para lermos o progresso
+        pb.redirectErrorStream(true); // stderr → stdout ler o progresso
         Process proc = pb.start();
         currentProcess = proc;
 
@@ -141,7 +141,11 @@ public class FFmpegService {
             } else if (Math.abs(Math.abs(rot) - 180) < 1) {
                 segments.add(String.format("[%s]transpose=1,transpose=1[%s]", cur, out));
             } else {
-                segments.add(String.format("[%s]rotate=%.5f*PI/180:fillcolor=black[%s]", cur, rot, out));
+                // ow/oh = rotw/roth: expande o frame para conter o vídeo girado (sem cortar)
+                String a = String.format(java.util.Locale.US, "%.5f*PI/180", rot);
+                segments.add(String.format(
+                    "[%s]rotate=%s:ow=rotw(%s):oh=roth(%s):fillcolor=black[%s]",
+                    cur, a, a, a, out));
             }
             cur = out;
         }
@@ -180,8 +184,6 @@ public class FFmpegService {
             String wmSized  = "wms" + (++n);
             String out      = "v"   + (++n);
 
-            // Dimensão de referência = menor lado do vídeo APÓS rotação/resolução.
-            // Calculada em pixels no Java (scale2ref tem semântica de variáveis
             // imprevisível e distorcia a marca d'água).
             int refDim = referenceDimension(project);
             int wmWidth = Math.max(2, (int) Math.round(refDim * sizePct / 100.0));
@@ -201,7 +203,6 @@ public class FFmpegService {
     }
 
     /**
-     * Menor lado (em pixels) do vídeo APÓS rotação e mudança de resolução.
      * É a base para dimensionar a marca d'água de forma proporcional.
      */
     private int referenceDimension(VideoProject project) {

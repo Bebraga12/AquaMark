@@ -33,12 +33,13 @@ public class EditorController {
     @FXML private ColorPicker   colorLetterbox;
 
     // Watermark
-    @FXML private Label  lblWatermarkFile;
-    @FXML private Slider sliderWatermarkSize;
-    @FXML private Label  lblWatermarkSize;
-    @FXML private Slider sliderWatermarkOpacity;
-    @FXML private Label  lblWatermarkOpacity;
-    @FXML private Pane   watermarkPositionPane;
+    @FXML private Label    lblWatermarkFile;
+    @FXML private Slider   sliderWatermarkSize;
+    @FXML private Label    lblWatermarkSize;
+    @FXML private Slider   sliderWatermarkOpacity;
+    @FXML private Label    lblWatermarkOpacity;
+    @FXML private CheckBox chkWmPositionIndividual;
+    @FXML private Pane     watermarkPositionPane;
 
     @FXML private Button btnExport;
     @FXML private Button btnExportAll;
@@ -48,6 +49,10 @@ public class EditorController {
     private Runnable onExportAllCallback;
     private Runnable onWatermarkChanged;
     private Runnable onPreviewParamsChanged;
+    private Runnable onWmPositionModeChanged;
+
+    // Quando true, setters programáticos (restauração de estado) não disparam callbacks.
+    private boolean suppressNotify = false;
 
     private double wmX = 0.95;
     private double wmY = 0.05;
@@ -85,6 +90,10 @@ public class EditorController {
         });
 
         colorLetterbox.valueProperty().addListener((obs, o, n) -> notifyPreviewParamsChanged());
+
+        chkWmPositionIndividual.selectedProperty().addListener((obs, o, n) -> {
+            if (!suppressNotify && onWmPositionModeChanged != null) onWmPositionModeChanged.run();
+        });
 
         watermarkPositionPane.widthProperty().addListener((o, a, b) -> rebuildPreview());
         watermarkPositionPane.heightProperty().addListener((o, a, b) -> rebuildPreview());
@@ -199,6 +208,42 @@ public class EditorController {
     public void setOnExportAll(Runnable cb)          { this.onExportAllCallback    = cb; }
     public void setOnWatermarkChanged(Runnable cb)   { this.onWatermarkChanged     = cb; }
     public void setOnPreviewParamsChanged(Runnable cb){ this.onPreviewParamsChanged = cb; }
+    public void setOnWmPositionModeChanged(Runnable cb){ this.onWmPositionModeChanged = cb; }
+
+    // ── Restauração de estado por vídeo ────────────────────────────
+
+    public boolean isWatermarkPositionIndividual() { return chkWmPositionIndividual.isSelected(); }
+
+    /** Move a marca d'água no preview sem disparar callbacks de mudança. */
+    public void setWatermarkPosition(double x, double y) {
+        wmX = x;
+        wmY = y;
+        if (previewRect != null) {
+            updateCircle(previewRect.getX(), previewRect.getY(),
+                         previewRect.getWidth(), previewRect.getHeight());
+        }
+    }
+
+    /** Define posição, tamanho e opacidade da marca sem disparar callbacks. */
+    public void setWatermarkAppearance(double x, double y, double size, double opacity) {
+        suppressNotify = true;
+        setWatermarkPosition(x, y);
+        sliderWatermarkSize.setValue(size);
+        sliderWatermarkOpacity.setValue(opacity);
+        suppressNotify = false;
+    }
+
+    /** Aplica o estado salvo de um vídeo (rotação + marca d'água) sem disparar callbacks. */
+    public void applyState(double rotation, boolean wmIndividual,
+                           double wmX, double wmY, double wmSize, double wmOpacity) {
+        suppressNotify = true;
+        sliderRotation.setValue(rotation);
+        chkWmPositionIndividual.setSelected(wmIndividual);
+        setWatermarkPosition(wmX, wmY);
+        sliderWatermarkSize.setValue(wmSize);
+        sliderWatermarkOpacity.setValue(wmOpacity);
+        suppressNotify = false;
+    }
 
     /** Atualiza o texto do botão Original com a resolução detectada. */
     public void setOriginalResolution(int w, int h) {
@@ -243,10 +288,10 @@ public class EditorController {
     public double getWatermarkOpacityPercent() { return sliderWatermarkOpacity.getValue(); }
 
     private void notifyWatermarkChanged() {
-        if (onWatermarkChanged != null) onWatermarkChanged.run();
+        if (!suppressNotify && onWatermarkChanged != null) onWatermarkChanged.run();
     }
 
     private void notifyPreviewParamsChanged() {
-        if (onPreviewParamsChanged != null) onPreviewParamsChanged.run();
+        if (!suppressNotify && onPreviewParamsChanged != null) onPreviewParamsChanged.run();
     }
 }

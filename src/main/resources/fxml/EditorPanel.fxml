@@ -113,7 +113,12 @@
                     </HBox>
 
                     <!-- Position drag preview -->
-                    <Label text="Posicao" styleClass="field-label"/>
+                    <Label text="Posição" styleClass="field-label"/>
+                    <CheckBox fx:id="chkWmPositionIndividual"
+                      text="Posição/individual deste video"
+                              styleClass="wm-individual-check">
+                        <tooltip><Tooltip text="Marcado: a posição vale só para este vídeo. Desmarcado: usa a posição compartilhada por todos os vídeos sem marcação."/></tooltip>
+                    </CheckBox>
                     <Pane fx:id="watermarkPositionPane" styleClass="wm-position-pane"
                           prefHeight="120" minHeight="80" maxWidth="Infinity"/>
                 </VBox>

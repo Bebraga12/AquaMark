@@ -473,6 +473,33 @@
   -fx-background-color: #1f4875;
 }
 
+.wm-individual-check {
+  -fx-text-fill: #9a9a9a;
+  -fx-font-size: 11px;
+  -fx-cursor: hand;
+}
+.wm-individual-check > .box {
+  -fx-background-color: #323232;
+  -fx-border-color: #4a4a4a;
+  -fx-border-radius: 3;
+  -fx-background-radius: 3;
+  -fx-padding: 2;
+}
+.wm-individual-check:hover {
+  -fx-text-fill: #d4d4d4;
+}
+.wm-individual-check:selected {
+  -fx-text-fill: #d4d4d4;
+}
+.wm-individual-check:selected > .box {
+  -fx-background-color: #3b8eea;
+  -fx-border-color: #3b8eea;
+}
+.wm-individual-check:selected > .box > .mark {
+  -fx-background-color: #ffffff;
+  -fx-shape: "M2,6 L5,9 L10,2 L11.5,3.5 L5,11 L0.5,7.5 Z";
+}
+
 .wm-position-pane {
   -fx-background-color: #1a1a1a;
   -fx-border-color: #3f3f3f;

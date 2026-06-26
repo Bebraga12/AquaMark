@@ -19,7 +19,6 @@ public class PreviewService {
         }
     }
 
-    /** Duração total em segundos via ffprobe. */
     public double getDuration(File file) throws Exception {
         Process p = ffprobe("-show_entries", "format=duration", "-of", "csv=p=0",
                             file.getAbsolutePath());
@@ -28,7 +27,6 @@ public class PreviewService {
         return Double.parseDouble(out);
     }
 
-    /** FPS real do stream de vídeo. */
     public double getFps(File file) throws Exception {
         Process p = ffprobe("-select_streams", "v:0",
                             "-show_entries", "stream=r_frame_rate",
@@ -44,7 +42,6 @@ public class PreviewService {
         return out.isEmpty() ? 30.0 : Double.parseDouble(out);
     }
 
-    /** Largura e altura do stream de vídeo em pixels — int[]{w, h}. */
     public int[] getVideoSize(File file) throws Exception {
         Process p = ffprobe("-select_streams", "v:0",
                             "-show_entries", "stream=width,height",
@@ -56,7 +53,6 @@ public class PreviewService {
         return new int[]{ Integer.parseInt(parts[0]), Integer.parseInt(parts[1]) };
     }
 
-    /** Frame estático em um instante — usado para seek e primeiro frame. */
     public Image extractFrame(File file, double seconds, String vfFilter) throws Exception {
         File temp = new File(TEMP_DIR, "seek_frame.jpg");
         List<String> cmd = new ArrayList<>(List.of(

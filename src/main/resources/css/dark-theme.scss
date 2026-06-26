@@ -474,6 +474,37 @@ $mono: "Consolas", "Courier New", monospace;
     }
 }
 
+// ── Watermark "posição individual" checkbox ───────────────────
+.wm-individual-check {
+    -fx-text-fill: $text-subtle;
+    -fx-font-size: 11px;
+    -fx-cursor: hand;
+
+    > .box {
+        -fx-background-color: $card;
+        -fx-border-color: $border-mid;
+        -fx-border-radius: 3;
+        -fx-background-radius: 3;
+        -fx-padding: 2;
+    }
+
+    &:hover { -fx-text-fill: $text; }
+
+    &:selected {
+        -fx-text-fill: $text;
+
+        > .box {
+            -fx-background-color: $accent;
+            -fx-border-color: $accent;
+
+            > .mark {
+                -fx-background-color: $white;
+                -fx-shape: "M2,6 L5,9 L10,2 L11.5,3.5 L5,11 L0.5,7.5 Z";
+            }
+        }
+    }
+}
+
 // ── Watermark position pane ───────────────────────────────────
 .wm-position-pane {
     -fx-background-color: $bg-deeper;

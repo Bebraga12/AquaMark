@@ -3,9 +3,11 @@ package com.aquamark.controller;
 import com.aquamark.util.TimeFormatter;
 import javafx.fxml.FXML;
 import javafx.scene.Cursor;
+import javafx.scene.Group;
 import javafx.scene.control.Label;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
+import javafx.scene.shape.Line;
 import javafx.scene.shape.Rectangle;
 
 public class TimelineController {
@@ -23,14 +25,17 @@ public class TimelineController {
     private Rectangle selectionRect;
     private Rectangle leftHandle;
     private Rectangle rightHandle;
+    private final Group ticks = new Group();
 
     private static final double HANDLE_W = 8;
     private static final double HANDLE_PAD = 8;
+    private static final double TICK_SPACING = 9; // px entre tracinhos da régua
 
     @FXML
     public void initialize() {
         buildTrack();
-        trimTrack.widthProperty().addListener((obs, o, n) -> updatePositions());
+        trimTrack.widthProperty().addListener((obs, o, n) -> { rebuildTicks(); updatePositions(); });
+        trimTrack.heightProperty().addListener((obs, o, n) -> rebuildTicks());
     }
 
     private void buildTrack() {
@@ -75,7 +80,28 @@ public class TimelineController {
             updateLabels();
         });
 
-        trimTrack.getChildren().addAll(trackBg, selectionRect, leftHandle, rightHandle);
+        ticks.setMouseTransparent(true);
+
+        trimTrack.getChildren().addAll(trackBg, selectionRect, ticks, leftHandle, rightHandle);
+    }
+
+    /** Desenha a régua: tracinho grande seguido de pequeno, repetindo ao longo da trilha. */
+    private void rebuildTicks() {
+        ticks.getChildren().clear();
+        double w = trimTrack.getWidth();
+        double h = trimTrack.getHeight();
+        if (w <= 0 || h <= 0) return;
+
+        double midY = h / 2.0;
+        int i = 0;
+        for (double x = HANDLE_W; x <= w - HANDLE_W; x += TICK_SPACING, i++) {
+            boolean major = (i % 2 == 0);
+            double halfLen = (major ? h * 0.28 : h * 0.14);
+            Line line = new Line(x, midY - halfLen, x, midY + halfLen);
+            line.setStroke(Color.web(major ? "#ffffff" : "#ffffff", major ? 0.30 : 0.16));
+            line.setStrokeWidth(1);
+            ticks.getChildren().add(line);
+        }
     }
 
     private void updatePositions() {
@@ -110,6 +136,18 @@ public class TimelineController {
         this.totalDuration = seconds;
         startRatio = 0.0;
         endRatio   = 1.0;
+        updatePositions();
+        updateLabels();
+    }
+
+    /** Restaura o corte salvo de um vídeo. endSeconds &lt;= 0 significa "até o fim". */
+    public void setTrim(double startSeconds, double endSeconds) {
+        if (totalDuration <= 0) return;
+        double sr = startSeconds <= 0 ? 0.0 : Math.min(1.0, startSeconds / totalDuration);
+        double er = endSeconds   <= 0 ? 1.0 : Math.min(1.0, endSeconds   / totalDuration);
+        if (er <= sr) { sr = 0.0; er = 1.0; }
+        startRatio = sr;
+        endRatio   = er;
         updatePositions();
         updateLabels();
     }
