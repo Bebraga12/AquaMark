@@ -64,6 +64,7 @@ public class MainController {
     private ImageView  wmOverlay;
     private File       cachedWmFile;
     private Image      cachedWmImage;
+    private File       wmLoadingFile;  // arquivo sendo extraído via FFmpeg (evita threads duplicadas)
 
     @FXML private Pane      seekTrimPane;
     private Rectangle       seekTrimRect;
@@ -262,10 +263,17 @@ public class MainController {
         if (pW <= 0 || pH <= 0) return;
 
         if (!file.equals(cachedWmFile)) {
+            Image img = new Image(file.toURI().toString()); // síncrono
+            if (img.isError() || img.getWidth() <= 0) {
+                // JavaFX não decodificou (ex.: vários GIFs) → extrai 1º frame via FFmpeg
+                loadWatermarkViaFFmpeg(file);
+                return;
+            }
             cachedWmFile  = file;
-            cachedWmImage = new Image(file.toURI().toString()); // síncrono
+            cachedWmImage = img;
             wmOverlay.setImage(cachedWmImage);
         }
+        if (cachedWmImage == null) return; // ainda extraindo via FFmpeg
 
         double size    = Math.min(pW, pH) * (editorPanelController.getWatermarkSizePercent() / 100.0);
         double opacity = editorPanelController.getWatermarkOpacityPercent() / 100.0;
@@ -294,6 +302,32 @@ public class MainController {
         wmOverlay.setLayoutX(wmX * (pW - renderedW));
         wmOverlay.setLayoutY(wmY * (pH - renderedH));
         wmOverlay.setVisible(true);
+    }
+
+    /** Fallback: extrai o 1º frame da marca d'água via FFmpeg quando o JavaFX não decodifica. */
+    private void loadWatermarkViaFFmpeg(File file) {
+        if (file.equals(wmLoadingFile)) return; // já em andamento
+        wmLoadingFile = file;
+        Thread t = new Thread(() -> {
+            try {
+                Image img = previewService.extractImageFirstFrame(file);
+                Platform.runLater(() -> {
+                    wmLoadingFile = null;
+                    // só aplica se ainda é o arquivo selecionado
+                    if (!file.equals(editorPanelController.getWatermarkFile())) return;
+                    if (img != null && !img.isError() && img.getWidth() > 0) {
+                        cachedWmFile  = file;
+                        cachedWmImage = img;
+                        wmOverlay.setImage(img);
+                        updateWatermarkOverlay();
+                    }
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> wmLoadingFile = null);
+            }
+        }, "wm-frame");
+        t.setDaemon(true);
+        t.start();
     }
 
     // ── Preview: rotação e resolução ─────────────────────────

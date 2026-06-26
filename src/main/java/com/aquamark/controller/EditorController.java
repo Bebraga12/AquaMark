@@ -2,6 +2,7 @@ package com.aquamark.controller;
 
 import com.aquamark.model.ResolutionPreset;
 import com.aquamark.model.WatermarkConfig;
+import com.aquamark.service.PreviewService;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.geometry.Point2D;
@@ -188,13 +189,17 @@ public class EditorController {
     private void onChooseWatermark() {
         FileChooser chooser = new FileChooser();
         chooser.setTitle("Escolher Marca d'Água");
-        chooser.getExtensionFilters().add(
-            new FileChooser.ExtensionFilter("Imagens", "*.png", "*.jpg", "*.jpeg", "*.gif"));
+        chooser.getExtensionFilters().addAll(
+            new FileChooser.ExtensionFilter("Todos suportados", "*.png", "*.jpg", "*.jpeg", "*.gif", "*.webp", "*.PNG", "*.JPG", "*.JPEG", "*.GIF", "*.WEBP"),
+            new FileChooser.ExtensionFilter("Animado (GIF/WebP)", "*.gif", "*.webp", "*.GIF", "*.WEBP"),
+            new FileChooser.ExtensionFilter("Imagens",          "*.png", "*.jpg", "*.jpeg", "*.PNG", "*.JPG", "*.JPEG"),
+            new FileChooser.ExtensionFilter("Todos os arquivos","*.*"));
         Stage stage = (Stage) btnExport.getScene().getWindow();
         File file = chooser.showOpenDialog(stage);
         if (file != null) {
-            watermarkFile = file;
-            lblWatermarkFile.setText(file.getName());
+            // WebP (mesmo renomeado para .gif) é convertido para APNG que ffmpeg/JavaFX leem
+            watermarkFile = PreviewService.prepareWatermark(file);
+            lblWatermarkFile.setText(file.getName()); // mostra o nome original
             notifyWatermarkChanged();
         }
     }

@@ -4,6 +4,7 @@ import com.aquamark.model.*;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.function.Consumer;
 
 public class FFmpegService {
@@ -21,6 +22,7 @@ public class FFmpegService {
         canceled = false;
         List<String> cmd = buildCommand(project, outputFile, quality, format);
         ProcessBuilder pb = new ProcessBuilder(cmd);
+        pb.environment().put("LC_ALL", "C"); // ffmpeg usa ponto decimal no progresso (time=)
         pb.redirectErrorStream(true); // stderr → stdout ler o progresso
         Process proc = pb.start();
         currentProcess = proc;
@@ -29,10 +31,14 @@ public class FFmpegService {
         double end   = project.getTrimRange().endSeconds();
         double total = (end > start) ? (end - start) : 0;
 
+        // Mantém as últimas linhas da saída do ffmpeg para diagnosticar falhas
+        java.util.ArrayDeque<String> tail = new java.util.ArrayDeque<>();
         try (BufferedReader reader = new BufferedReader(
                 new InputStreamReader(proc.getInputStream()))) {
             String line;
             while ((line = reader.readLine()) != null) {
+                if (tail.size() >= 12) tail.removeFirst();
+                tail.addLast(line);
                 if (onProgress != null && line.contains("time=") && total > 0) {
                     double elapsed = parseTime(line);
                     if (elapsed >= 0)
@@ -43,14 +49,33 @@ public class FFmpegService {
 
         int exit = proc.waitFor();
         currentProcess = null;
-        if (!canceled && exit != 0)
-            throw new IOException("FFmpeg saiu com código " + exit);
+        if (!canceled && exit != 0) {
+            String detail = extractError(tail);
+            throw new IOException("FFmpeg falhou (código " + exit + ")"
+                + (detail.isEmpty() ? "" : ": " + detail));
+        }
+    }
+
+    /** Escolhe a linha mais informativa da cauda da saída do ffmpeg (a real causa do erro). */
+    private String extractError(java.util.Deque<String> tail) {
+        String last = "";
+        for (String l : tail) {
+            String t = l.trim();
+            if (t.isEmpty() || t.startsWith("frame=") || t.startsWith("size=")) continue;
+            // Prioriza linhas que claramente descrevem um erro
+            String low = t.toLowerCase();
+            if (low.contains("error") || low.contains("invalid") || low.contains("no such")
+                || low.contains("unable") || low.contains("failed") || low.contains("could not"))
+                return t;
+            last = t;
+        }
+        return last;
     }
 
     private double parseTime(String line) {
         int idx = line.indexOf("time=");
         if (idx < 0) return -1;
-        String t = line.substring(idx + 5).trim().split("\\s+")[0];
+        String t = line.substring(idx + 5).trim().split("\\s+")[0].replace(',', '.');
         try {
             String[] p = t.split(":");
             return Double.parseDouble(p[0]) * 3600
@@ -72,7 +97,7 @@ public class FFmpegService {
         // -ss como opção de INPUT (fast seek) — deve vir ANTES de -i
         if (start > 0.01) {
             cmd.add("-ss");
-            cmd.add(String.format("%.3f", start));
+            cmd.add(String.format(Locale.US, "%.3f", start));
         }
 
         cmd.add("-i");
@@ -83,6 +108,10 @@ public class FFmpegService {
         WatermarkConfig wm = project.getWatermarkConfig();
         boolean hasWatermark = wm != null && wm.getFile() != null && wm.getFile().exists();
         if (hasWatermark) {
+            // Marca animada (GIF/APNG/WebP) precisa de -stream_loop -1 para repetir até o fim do vídeo
+            if (isAnimatedWatermark(wm.getFile())) {
+                cmd.add("-stream_loop"); cmd.add("-1");
+            }
             cmd.add("-i");
             cmd.add(wm.getFile().getAbsolutePath());
         }
@@ -105,6 +134,9 @@ public class FFmpegService {
             cmd.add("-b:a");
             cmd.add("128k");
         } else {
+            // Sem filtros, mas o vídeo é re-encodado: garante dimensões pares (libx264)
+            cmd.add("-vf");
+            cmd.add("scale=trunc(iw/2)*2:trunc(ih/2)*2");
             addCodecArgs(cmd, format, quality);
             cmd.add("-c:a");
             cmd.add("copy");
@@ -114,7 +146,7 @@ public class FFmpegService {
         // imediatamente antes do arquivo de saída
         if (end > 0.01 && end > start) {
             cmd.add("-t");
-            cmd.add(String.format("%.3f", end - start));
+            cmd.add(String.format(Locale.US, "%.3f", end - start));
         }
 
         cmd.add(outputFile.getAbsolutePath());
@@ -173,9 +205,16 @@ public class FFmpegService {
 
             String wmIn = "1:v";
 
+            // Marca animada: normaliza timestamps e garante canal alpha antes de qualquer filtro
+            if (isAnimatedWatermark(wm.getFile())) {
+                String animNorm = "wmg" + (++n);
+                segments.add(String.format("[%s]format=rgba,setpts=PTS-STARTPTS[%s]", wmIn, animNorm));
+                wmIn = animNorm;
+            }
+
             if (opacity < 0.99) {
                 String wmAlpha = "wma" + (++n);
-                segments.add(String.format(
+                segments.add(String.format(Locale.US,
                     "[%s]format=rgba,colorchannelmixer=aa=%.4f[%s]",
                     wmIn, opacity, wmAlpha));
                 wmIn = wmAlpha;
@@ -191,13 +230,20 @@ public class FFmpegService {
             // scale com largura absoluta e h=-1 → preserva o aspect ratio da marca d'água
             segments.add(String.format("[%s]scale=%d:-1[%s]", wmIn, wmWidth, wmSized));
 
-            // x e y como opções nomeadas separadas — permite que a marca d'água
-            // ultrapasse os limites do vídeo (FFmpeg faz o clip automaticamente)
-            segments.add(String.format(
-                "[%s][%s]overlay=x=(main_w-overlay_w)*%.6f:y=(main_h-overlay_h)*%.6f[%s]",
+            // shortest=1: garante que o overlay para quando o vídeo principal acaba
+            // (necessário especialmente quando a marca d'água é um GIF em loop infinito)
+            segments.add(String.format(Locale.US,
+                "[%s][%s]overlay=x=(main_w-overlay_w)*%.6f:y=(main_h-overlay_h)*%.6f:shortest=1[%s]",
                 cur, wmSized, wmX, wmY, out));
             cur = out;
         }
+
+        // Guarda final de PARIDADE: libx264/yuv420p exige largura e altura divisíveis por 2.
+        // rotate (rotw/roth) e scale+pad de resolução podem produzir dimensões ímpares
+        // (ex.: 1920x1081) — isso causava "height not divisible by 2" / erro 187 na exportação.
+        String even = "vf" + (++n);
+        segments.add(String.format("[%s]scale=trunc(iw/2)*2:trunc(ih/2)*2[%s]", cur, even));
+        cur = even;
 
         return new FilterResult(String.join(";", segments), cur);
     }
@@ -224,13 +270,15 @@ public class FFmpegService {
     /** Lê largura/altura do vídeo via ffprobe. Fallback 1080x1920 se falhar. */
     private int[] probeDimensions(File video) {
         try {
-            Process p = new ProcessBuilder(
+            ProcessBuilder pb = new ProcessBuilder(
                 "ffprobe", "-v", "error",
                 "-select_streams", "v:0",
                 "-show_entries", "stream=width,height",
                 "-of", "csv=p=0:s=x",
                 video.getAbsolutePath()
-            ).redirectErrorStream(true).start();
+            ).redirectErrorStream(true);
+            pb.environment().put("LC_ALL", "C");
+            Process p = pb.start();
 
             String line;
             try (BufferedReader r = new BufferedReader(
@@ -270,5 +318,10 @@ public class FFmpegService {
 
     public static String extensionFor(String format) {
         return "mov".equals(format) ? "mov" : "mp4";
+    }
+
+    private static boolean isAnimatedWatermark(File file) {
+        String name = file.getName().toLowerCase();
+        return name.endsWith(".gif") || name.endsWith(".apng") || name.endsWith(".webp");
     }
 }
